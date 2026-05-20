@@ -1,4 +1,59 @@
-# Coolify / 部分主機預設只認根目錄的 docker-compose.yaml
-# 實際服務定義維持在 docker-compose.prod.yml
-include:
-  - path: docker-compose.prod.yml
+# Coolify：請用此檔（勿用 include）— Coolify 會忽略 include 內服務 →「未選擇任何服務」
+# 手動 VPS 仍可用：docker compose -f docker-compose.prod.yml up -d
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: warehouse
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: warehouse_inspection
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U warehouse -d warehouse_inspection"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://warehouse:${DB_PASSWORD}@db:5432/warehouse_inspection
+      AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_URL: ${AUTH_URL}
+      LOCK_TTL_MINUTES: ${LOCK_TTL_MINUTES:-30}
+      ERP_API_URL: ${ERP_API_URL:-}
+      ERP_DB_URL: ${ERP_DB_URL:-}
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_started
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://warehouse:${DB_PASSWORD}@db:5432/warehouse_inspection
+      SYNC_CRON_EXPRESSION: ${SYNC_CRON_EXPRESSION:-0 * * * *}
+      ERP_API_URL: ${ERP_API_URL:-}
+      ERP_DB_URL: ${ERP_DB_URL:-}
+
+volumes:
+  pgdata:
