@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>單據查詢篩選範本（參考）</title>
+    <style>
+      :root {
+        font-family: system-ui, sans-serif;
+        color: #18181b;
+      }
+      body {
+        max-width: 960px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      h1 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+      }
+      .hint {
+        font-size: 0.875rem;
+        color: #71717a;
+        margin-bottom: 1.25rem;
+      }
+      .bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: flex-end;
+        padding: 1rem;
+        border: 1px solid #e4e4e7;
+        border-radius: 0.5rem;
+        background: #fafafa;
+      }
+      .field label.top {
+        display: block;
+        font-size: 0.7rem;
+        color: #71717a;
+        margin-bottom: 0.25rem;
+      }
+      select,
+      input[type="text"] {
+        border: 1px solid #d4d4d8;
+        border-radius: 0.25rem;
+        padding: 0.35rem 0.5rem;
+        font-size: 0.875rem;
+      }
+      .multi {
+        border: 1px solid #d4d4d8;
+        border-radius: 0.25rem;
+        padding: 0.5rem;
+        background: #fff;
+        max-height: 8rem;
+        overflow-y: auto;
+        min-width: 10rem;
+      }
+      .multi label {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.8rem;
+        padding: 0.15rem 0;
+      }
+      button.primary {
+        background: #18181b;
+        color: #fff;
+        border: none;
+        border-radius: 0.25rem;
+        padding: 0.45rem 0.85rem;
+        font-size: 0.875rem;
+        cursor: default;
+      }
+      .table-wrap {
+        margin-top: 1.5rem;
+        border: 1px solid #e4e4e7;
+        border-radius: 0.5rem;
+        overflow: hidden;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+      }
+      th {
+        text-align: left;
+        background: #f4f4f5;
+        padding: 0.5rem 0.75rem;
+      }
+      td {
+        padding: 0.5rem 0.75rem;
+        border-top: 1px solid #f4f4f5;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>單據查詢 — 篩選列範本</h1>
+    <p class="hint">
+      此頁為靜態示意（實際功能請用系統內「單據」頁）。狀態、部門、單據類型皆為單選下拉；「全部」表示不篩該條件。
+    </p>
+
+    <div class="bar">
+      <div class="field">
+        <span class="top">狀態</span>
+        <select>
+          <option>全部</option>
+          <option>未完成</option>
+          <option>檢驗中</option>
+          <option>已出貨</option>
+        </select>
+      </div>
+      <div class="field">
+        <span class="top">部門</span>
+        <select>
+          <option selected>全部</option>
+          <option>倉儲一部</option>
+          <option>業務二部</option>
+          <option>採購部</option>
+        </select>
+      </div>
+      <div class="field">
+        <span class="top">單據類型</span>
+        <select>
+          <option selected>全部</option>
+          <option>進貨單</option>
+          <option>銷貨出庫</option>
+          <option>調撥出庫</option>
+          <option>銷貨單</option>
+          <option>銷退</option>
+          <option>銷貨退回單</option>
+        </select>
+      </div>
+      <div class="field" style="flex: 1; min-width: 10rem">
+        <span class="top">關鍵字</span>
+        <input type="text" placeholder="單號／名稱／通路代碼" style="width: 100%" />
+      </div>
+      <button type="button" class="primary">查詢</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>單據號碼</th>
+            <th>類型</th>
+            <th>狀態</th>
+            <th>部門</th>
+            <th>名稱</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-family: ui-monospace, monospace">SO-2026-0001</td>
+            <td>出貨單</td>
+            <td>未完成</td>
+            <td>業務二部</td>
+            <td>範例客戶 A</td>
+          </tr>
+          <tr>
+            <td style="font-family: ui-monospace, monospace">SO-2026-0002</td>
+            <td>調撥單</td>
+            <td>檢驗中</td>
+            <td>採購部</td>
+            <td>範例客戶 B</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </body>
+</html>

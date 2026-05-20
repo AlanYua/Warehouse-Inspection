@@ -1,0 +1,60 @@
+# 正式環境：Vultr VPS + Coolify（或 docker compose -f docker-compose.prod.yml up -d）
+# 複製 .env.production.example → .env 並填寫後再啟動
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: warehouse
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      POSTGRES_DB: warehouse_inspection
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U warehouse -d warehouse_inspection"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    # 不對外開 5432；僅 app / worker 透過內網連線
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://warehouse:${DB_PASSWORD}@db:5432/warehouse_inspection
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
+      AUTH_URL: ${AUTH_URL:?set AUTH_URL in .env}
+      LOCK_TTL_MINUTES: ${LOCK_TTL_MINUTES:-30}
+      ERP_API_URL: ${ERP_API_URL:-}
+      ERP_DB_URL: ${ERP_DB_URL:-}
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_started
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://warehouse:${DB_PASSWORD}@db:5432/warehouse_inspection
+      SYNC_CRON_EXPRESSION: ${SYNC_CRON_EXPRESSION:-0 * * * *}
+      ERP_API_URL: ${ERP_API_URL:-}
+      ERP_DB_URL: ${ERP_DB_URL:-}
+
+volumes:
+  pgdata:

@@ -1,0 +1,9 @@
+node_modules
+.next
+.next-dev
+.git
+*.log
+npm-debug.log*
+.env
+.env.local
+prisma/migrations/**/migration.sql.bak

@@ -1,0 +1,285 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  WAREHOUSE
+  WAREHOUSE_SUPERVISOR
+  SALES
+  PROCUREMENT
+  ADMIN
+}
+
+enum DocumentStatus {
+  PENDING
+  INSPECTING
+  COMPLETED
+  SHIPPED
+}
+
+enum AcceptMethod {
+  BARCODE
+  MANUAL
+}
+
+enum DocumentSource {
+  EXCEL
+  API
+  DB_SYNC
+}
+
+enum DocumentFlow {
+  /// 驗出（出庫/出貨）
+  OUT
+  /// 驗入（驗收/入庫）
+  IN
+}
+
+enum CommentTargetType {
+  DOCUMENT
+  PRODUCT
+  CHANNEL
+  RETURN_SHIPMENT
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  name         String
+  role         Role
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  lockedDocs      InspectionDoc[] @relation("DocLockedBy")
+  inspectedDocs   InspectionDoc[] @relation("DocInspector")
+  pickedDocs      InspectionDoc[] @relation("DocPicker")
+  stockedDocs     InspectionDoc[] @relation("DocStockedBy")
+
+  comments  Comment[]
+  auditLogs AuditLog[]
+}
+
+/// 單據類型主檔（設定維護）；至少一筆時，匯入／同步僅允許此處名稱
+model DocumentTypeOption {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  /// 此類型預設為驗出/驗入（用於匯入時依「單據類型」判別）
+  flow      DocumentFlow @default(OUT)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model Department {
+  id             String          @id @default(cuid())
+  name           String          @unique
+  channels       Channel[]
+  documents      InspectionDoc[]
+  returns        ReturnShipment[]
+}
+
+model Channel {
+  id          String   @id @default(cuid())
+  channelCode String   @unique
+  name        String
+  phone       String?
+  address     String?
+  lingyueCode String?
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Product {
+  id              String   @id @default(cuid())
+  productCode     String   @unique
+  barcode         String?
+  name            String
+  brand           String?
+  storageLocation String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+/// 品牌主檔（設定維護）；建立商品時需存在且啟用
+model BrandOption {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+/// 全系統唯一列印抬頭（所有部門列印共用）；singleton id = 1
+model CompanyPrintHeader {
+  id             Int      @id @default(1)
+  companyName    String
+  companyPhone   String?
+  companyAddress String?
+  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now())
+}
+
+model InspectionDoc {
+  id              String   @id @default(cuid())
+  documentNumber  String
+  documentType    String
+  /// 單據方向：驗出/驗入（影響 Dashboard 件數統計）
+  flow            DocumentFlow @default(OUT)
+  /// 單據業務日（匯入或手動維護）；與系統 createdAt 不同
+  documentDate    DateTime?
+  lingyueCode     String?
+  channelCode     String?
+  counterpartyName String?
+  phone           String?
+  address         String?
+  departmentId    String
+  department      Department @relation(fields: [departmentId], references: [id])
+  creatorName     String?
+  inspectorId     String?
+  inspector       User?    @relation("DocInspector", fields: [inspectorId], references: [id])
+  pickerId        String?
+  picker          User?    @relation("DocPicker", fields: [pickerId], references: [id])
+  /// 物流單號（可重複；允許不同單據共用同一單號）
+  logisticsNo     String?
+  /// 物流件數／箱數
+  packageCount    Int?
+  /// A 小件數（出貨時填寫）
+  packageCountA   Int?
+  /// C 大件數（出貨時填寫）
+  packageCountC   Int?
+  /// 箱子大小（自由輸入，例如 60x40x40 / S/M/L 等）
+  packageSize     String?
+  shippedAt       DateTime?
+  /// 驗入入庫時間（倉庫主管勾選「已完成上架」後寫入）
+  stockedAt       DateTime?
+  stockedById     String?
+  stockedBy       User?    @relation("DocStockedBy", fields: [stockedById], references: [id])
+  status          DocumentStatus @default(PENDING)
+  acceptMethod    AcceptMethod @default(MANUAL)
+  lockedByUserId  String?
+  lockedBy        User?    @relation("DocLockedBy", fields: [lockedByUserId], references: [id])
+  lockedAt        DateTime?
+  source          DocumentSource @default(EXCEL)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  lines DocumentLine[]
+
+  @@unique([documentNumber, channelCode, documentType])
+  @@index([status, updatedAt])
+  @@index([status, shippedAt])
+  @@index([departmentId, status, updatedAt])
+  @@index([departmentId, status, shippedAt])
+  @@index([flow, status, updatedAt])
+  @@index([logisticsNo])
+  @@index([documentDate])
+  @@index([flow, stockedAt])
+}
+
+model DocumentLine {
+  id              String   @id @default(cuid())
+  documentId      String
+  document        InspectionDoc @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  productCode     String
+  barcode         String?
+  productName     String
+  docQuantity     Float
+  inspectQuantity Float    @default(0)
+  /// 揀貨者勾選「揀過」（驗收量由驗收者核對；略過驗收完成時須全勾）
+  pickerPicked    Boolean  @default(false)
+  remark          String?
+  storageLocation String?
+
+  @@index([documentId])
+  @@index([productCode])
+  @@index([barcode])
+  @@index([documentId, productCode])
+}
+
+model ReturnShipment {
+  id            String   @id @default(cuid())
+  logisticsNo   String
+  packageName   String
+  pieceCount    Int
+  departmentId  String
+  department    Department @relation(fields: [departmentId], references: [id])
+  recipientName String
+  /// 收貨時間（業務時間）；舊資料可能為 null，顯示/查詢時需 fallback 到 createdAt
+  receivedAt    DateTime?
+  createdAt     DateTime @default(now())
+}
+
+model ImportLog {
+  id           String   @id @default(cuid())
+  filename     String?
+  source       String
+  orderNo      String?
+  successCount Int      @default(0)
+  errorCount   Int      @default(0)
+  message      String?
+  uploader     String?
+  createdAt    DateTime @default(now())
+}
+
+model SyncConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String?
+  updatedAt DateTime @updatedAt
+}
+
+model Comment {
+  id         String            @id @default(cuid())
+  targetType CommentTargetType
+  targetId   String
+  body       String
+  authorId   String
+  author     User              @relation(fields: [authorId], references: [id])
+  deletedAt  DateTime?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  @@index([targetType, targetId, createdAt])
+  @@index([authorId, createdAt])
+  @@index([deletedAt])
+}
+
+/// 全系統操作紀錄；紀錄誰在何時對什麼資源做了什麼動作。
+/// 失敗動作不寫；只記錄成功完成的副作用。
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /// 冗餘保存帳號、姓名、角色，避免員工被刪除後無法追溯
+  username    String?
+  userName    String?
+  role        Role?
+  /// 動作代碼，如 doc.complete / user.create
+  action      String
+  /// 目標資源類型（InspectionDoc/User/Channel/Product/ReturnShipment 等）
+  targetType  String?
+  targetId    String?
+  /// 顯示用標籤（如單據號碼、商品編號）
+  targetLabel String?
+  /// 一行摘要，可供前端直接顯示
+  summary     String?
+  /// 結構化資料（前後值、批次數量等）
+  meta        Json?
+  ip          String?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId, createdAt])
+}
