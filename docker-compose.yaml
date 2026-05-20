@@ -1,0 +1,4 @@
+# Coolify / 部分主機預設只認根目錄的 docker-compose.yaml
+# 實際服務定義維持在 docker-compose.prod.yml
+include:
+  - path: docker-compose.prod.yml
