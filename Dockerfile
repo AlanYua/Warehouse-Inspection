@@ -33,13 +33,15 @@ COPY --from=deps    /app/node_modules/.prisma ./node_modules/.prisma
 
 COPY --from=deps /app/node_modules/prisma ./node_modules/prisma
 
+COPY scripts/wait-for-db-tcp.mjs ./scripts/wait-for-db-tcp.mjs
+
 USER nextjs
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:3000/api/health/live').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
-CMD ["sh", "-c", "node ./node_modules/prisma/build/index.js migrate deploy && node server.js"]
+CMD ["sh", "-c", "node ./scripts/wait-for-db-tcp.mjs && node ./node_modules/prisma/build/index.js migrate deploy && node server.js"]
 
 # ------- worker（背景排程，與 app 共用同一映像建置鏈） -------
 FROM base AS worker
@@ -51,6 +53,7 @@ COPY prisma ./prisma/
 COPY tsconfig.json ./
 COPY src ./src/
 COPY scripts/worker.ts ./scripts/worker.ts
+COPY scripts/wait-for-db-tcp.mjs ./scripts/wait-for-db-tcp.mjs
 RUN npm ci && node ./node_modules/prisma/build/index.js generate
 
-CMD ["node", "./node_modules/tsx/dist/cli.mjs", "scripts/worker.ts"]
+CMD ["sh", "-c", "node ./scripts/wait-for-db-tcp.mjs && node ./node_modules/tsx/dist/cli.mjs scripts/worker.ts"]

@@ -59,12 +59,12 @@ sudo apt update && sudo apt upgrade -y
 
 - **Repository**：本專案 Git URL
 - **Branch**：`main`（或你的正式分支）
-- **Docker Compose file**：`docker-compose.prod.yml`
+- **Docker Compose file**：`docker-compose.yaml`（Coolify 會忽略 `include`；勿只選 `docker-compose.prod.yml` 若該檔不在 Coolify 的解析路徑內）
 - **Build**：開啟（會 build `app` + `worker`）
 
 ### 4.2 環境變數
 
-在 Coolify「Environment Variables」貼上（或從 `.env.production.example` 複製）：
+在 Coolify「Environment Variables」貼上（或從 `.env.production.example` 複製）。**`DB_PASSWORD` 必填且不可為空字串**，否則官方 `postgres` 映像會立刻退出，`depends_on` 會失敗。
 
 ```env
 DB_PASSWORD=<openssl rand -base64 32>
@@ -161,6 +161,7 @@ crontab -e
 
 | 現象 | 處理 |
 |------|------|
+| **Deploy 秒失敗、`db` unhealthy** | 幾乎都是 **`DB_PASSWORD` 未填或空**（`postgres` 映像會立刻退出）。Coolify 環境變數鍵名必須是 **`DB_PASSWORD`**。另可 SSH：`docker logs <db 容器名>`。若曾用錯密碼／空密碼寫入過 volume，刪除該 stack 的 **`pgdata` volume** 後再部署。 |
 | 登入後馬上登出 | `AUTH_URL` 必須與瀏覽器網址完全一致（https、無尾斜線） |
 | 502 Bad Gateway | app 未起來；看 app container log、RAM 是否不足 |
 | migrate 失敗 | DB 已是舊 schema：依 `.env.example` 註解跑 `prisma migrate resolve` |
@@ -192,7 +193,8 @@ curl -s http://127.0.0.1:3000/api/health/live
 
 | 檔案 | 用途 |
 |------|------|
-| `docker-compose.prod.yml` | 正式三服務：db / app / worker |
+| `docker-compose.yaml` | **Coolify 用**（內聯服務，勿依賴 `include`） |
+| `docker-compose.prod.yml` | 手動 VPS / 本機正式三服務：db / app / worker |
 | `Dockerfile` | `runner`（Next）、`worker`（排程） |
 | `.env.production.example` | 環境變數範本 |
 | `scripts/backup-db.sh` | Postgres 備份 |

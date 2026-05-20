@@ -27,7 +27,7 @@ services:
     restart: unless-stopped
     depends_on:
       db:
-        condition: service_healthy
+        condition: service_started
     expose:
       - "3000"
     environment:
@@ -47,7 +47,7 @@ services:
     restart: unless-stopped
     depends_on:
       db:
-        condition: service_healthy
+        condition: service_started
       app:
         condition: service_started
     environment:
