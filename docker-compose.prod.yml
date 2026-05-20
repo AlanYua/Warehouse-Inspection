@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: warehouse
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: warehouse_inspection
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -32,8 +32,8 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://warehouse:${DB_PASSWORD}@db:5432/warehouse_inspection
-      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
-      AUTH_URL: ${AUTH_URL:?set AUTH_URL in .env}
+      AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_URL: ${AUTH_URL}
       LOCK_TTL_MINUTES: ${LOCK_TTL_MINUTES:-30}
       ERP_API_URL: ${ERP_API_URL:-}
       ERP_DB_URL: ${ERP_DB_URL:-}
