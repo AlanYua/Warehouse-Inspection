@@ -30,8 +30,9 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=deps    /app/node_modules/.prisma ./node_modules/.prisma
-
+# migrate deploy 需要完整 Prisma CLI（含 @prisma/engines 等）
 COPY --from=deps /app/node_modules/prisma ./node_modules/prisma
+COPY --from=deps /app/node_modules/@prisma ./node_modules/@prisma
 
 COPY scripts/wait-for-db-tcp.mjs ./scripts/wait-for-db-tcp.mjs
 
