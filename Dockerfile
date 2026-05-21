@@ -13,7 +13,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NODE_ENV=production
-RUN npx prisma generate && npm run build
+RUN npx prisma generate && npm run build \
+ && test -f prisma/migrations/20260511155840_init/migration.sql
 
 # ------- runner -------
 FROM base AS runner
@@ -28,7 +29,11 @@ RUN addgroup --system --gid 1001 nodejs \
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/prisma ./prisma
+# standalone 可能帶空的 prisma/migrations 目錄；必須在之後覆寫完整 migration.sql
+COPY --from=builder /app/prisma/schema.prisma ./prisma/schema.prisma
+COPY --from=builder /app/prisma/migrations ./prisma/migrations
+RUN test -f prisma/migrations/20260511155840_init/migration.sql \
+ && chmod -R a+rX prisma/migrations
 COPY --from=deps    /app/node_modules/.prisma ./node_modules/.prisma
 # migrate deploy 需要完整 Prisma CLI（含 @prisma/engines 等）
 COPY --from=deps /app/node_modules/prisma ./node_modules/prisma
