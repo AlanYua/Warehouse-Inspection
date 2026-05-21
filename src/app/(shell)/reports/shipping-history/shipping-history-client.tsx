@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { flowZh } from "@/app/(shell)/documents/[id]/inspect-types";
 
 type HistoryRow = {
@@ -26,6 +26,18 @@ type Payload = {
   total: number;
   rows: HistoryRow[];
 };
+
+type BrandOption = { id: string; name: string; isActive: boolean };
+
+type ProductOption = {
+  productCode: string;
+  name: string;
+  barcode: string | null;
+  brand: string | null;
+};
+
+const inputCls =
+  "mt-0.5 block rounded-md border border-input bg-background px-2 py-1.5 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 function fmtDate(iso: string) {
   const d = new Date(iso);
@@ -54,21 +66,131 @@ function qtyClass(n: number) {
 }
 
 export default function ShippingHistoryClient() {
+  const [brands, setBrands] = useState<BrandOption[]>([]);
+  const [brand, setBrand] = useState("");
   const [keyword, setKeyword] = useState("");
+  const [productOptions, setProductOptions] = useState<ProductOption[]>([]);
+  const [optionsLoading, setOptionsLoading] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<ProductOption | null>(null);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [flow, setFlow] = useState<"" | "OUT" | "IN">("");
   const [data, setData] = useState<Payload | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  const activeBrands = brands.filter((b) => b.isActive);
+
+  useEffect(() => {
+    void fetch("/api/brands", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows: BrandOption[]) => setBrands(Array.isArray(rows) ? rows : []));
+  }, []);
+
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPickerOpen(false);
+    };
+    const onPointerDown = (e: MouseEvent) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setPickerOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [pickerOpen]);
+
+  useEffect(() => {
+    const k = keyword.trim();
+    if (!brand || !k) {
+      setProductOptions([]);
+      setOptionsLoading(false);
+      return;
+    }
+
+    const t = window.setTimeout(() => {
+      void (async () => {
+        setOptionsLoading(true);
+        try {
+          const sp = new URLSearchParams({ brand, q: k, limit: "30" });
+          const res = await fetch(`/api/products?${sp}`, { credentials: "include" });
+          const j = await res.json().catch(() => []);
+          if (!res.ok) {
+            setProductOptions([]);
+            return;
+          }
+          const opts: ProductOption[] = Array.isArray(j) ? j : [];
+          setProductOptions(opts);
+          setPickerOpen(true);
+          if (opts.length === 1) {
+            const p = opts[0];
+            const kn = k.toLowerCase();
+            if (
+              p.productCode.toLowerCase() === kn ||
+              (p.barcode && p.barcode.toLowerCase() === kn)
+            ) {
+              setSelectedProduct(p);
+              setKeyword(`${p.productCode} · ${p.name}`);
+              setPickerOpen(false);
+            }
+          }
+        } finally {
+          setOptionsLoading(false);
+        }
+      })();
+    }, 280);
+
+    return () => window.clearTimeout(t);
+  }, [brand, keyword]);
+
+  function onBrandChange(next: string) {
+    setBrand(next);
+    setKeyword("");
+    setSelectedProduct(null);
+    setProductOptions([]);
+    setPickerOpen(false);
+    setData(null);
+    setErr(null);
+  }
+
+  function pickProduct(p: ProductOption) {
+    setSelectedProduct(p);
+    setKeyword(`${p.productCode} · ${p.name}`);
+    setPickerOpen(false);
+    setData(null);
+    setErr(null);
+  }
+
+  function onKeywordChange(v: string) {
+    setKeyword(v);
+    if (
+      selectedProduct &&
+      v.trim() !== `${selectedProduct.productCode} · ${selectedProduct.name}`
+    ) {
+      setSelectedProduct(null);
+      setData(null);
+    }
+  }
 
   async function search() {
-    const q = keyword.trim();
-    if (!q) {
-      setErr("請輸入貨號或條碼");
+    if (!brand) {
+      setErr("請先選擇品牌");
       setData(null);
       return;
     }
+    if (!selectedProduct) {
+      setErr("請先從品項清單選擇商品");
+      setData(null);
+      return;
+    }
+    const q = selectedProduct.productCode.trim();
     setLoading(true);
     setErr(null);
     try {
@@ -110,21 +232,70 @@ export default function ShippingHistoryClient() {
           }}
         >
           <div>
-            <label className="block text-xs text-muted-foreground">貨號／條碼</label>
+            <label className="block text-xs text-muted-foreground">品牌</label>
+            <select
+              className={`${inputCls} w-40`}
+              value={brand}
+              onChange={(e) => onBrandChange(e.target.value)}
+              disabled={!activeBrands.length}
+            >
+              <option value="">請選擇</option>
+              {activeBrands.map((b) => (
+                <option key={b.id} value={b.name}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="relative" ref={pickerRef}>
+            <label className="block text-xs text-muted-foreground">
+              品項（貨號／條碼／名稱）
+            </label>
             <input
               type="text"
-              className="mt-0.5 block w-56 rounded-md border border-input bg-background px-2 py-1.5 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              placeholder="掃描或輸入"
+              className={`${inputCls} w-72`}
+              placeholder={brand ? "輸入關鍵字搜尋品項" : "請先選品牌"}
               value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              autoFocus
+              onChange={(e) => onKeywordChange(e.target.value)}
+              onFocus={() => {
+                if (productOptions.length) setPickerOpen(true);
+              }}
+              disabled={!brand}
             />
+            {brand && keyword.trim() && pickerOpen ? (
+              <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-md border border-border bg-popover text-popover-foreground shadow-md text-sm">
+                {optionsLoading ? (
+                  <li className="px-3 py-2 text-muted-foreground">搜尋中…</li>
+                ) : productOptions.length === 0 ? (
+                  <li className="px-3 py-2 text-muted-foreground">無符合品項</li>
+                ) : (
+                  productOptions.map((p) => (
+                    <li key={p.productCode}>
+                      <button
+                        type="button"
+                        className="w-full text-left px-3 py-2 hover:bg-muted"
+                        onClick={() => pickProduct(p)}
+                      >
+                        <span className="font-mono font-medium">{p.productCode}</span>
+                        <span className="mx-1 text-muted-foreground">·</span>
+                        <span>{p.name}</span>
+                        {p.barcode ? (
+                          <span className="block text-xs text-muted-foreground font-mono mt-0.5">
+                            {p.barcode}
+                          </span>
+                        ) : null}
+                      </button>
+                    </li>
+                  ))
+                )}
+              </ul>
+            ) : null}
           </div>
           <div>
             <label className="block text-xs text-muted-foreground">起日</label>
             <input
               type="date"
-              className="mt-0.5 block rounded-md border border-input bg-background px-2 py-1.5 text-sm shadow-sm"
+              className={inputCls}
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
             />
@@ -133,7 +304,7 @@ export default function ShippingHistoryClient() {
             <label className="block text-xs text-muted-foreground">迄日</label>
             <input
               type="date"
-              className="mt-0.5 block rounded-md border border-input bg-background px-2 py-1.5 text-sm shadow-sm"
+              className={inputCls}
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
             />
@@ -141,7 +312,7 @@ export default function ShippingHistoryClient() {
           <div>
             <label className="block text-xs text-muted-foreground">方向</label>
             <select
-              className="mt-0.5 block rounded-md border border-input bg-background px-2 py-1.5 text-sm shadow-sm"
+              className={inputCls}
               value={flow}
               onChange={(e) => setFlow(e.target.value as "" | "OUT" | "IN")}
             >
@@ -152,12 +323,25 @@ export default function ShippingHistoryClient() {
           </div>
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !selectedProduct}
             className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm shadow-sm hover:bg-primary/90 disabled:opacity-50"
           >
             {loading ? "查詢中…" : "查詢"}
           </button>
         </form>
+        {selectedProduct ? (
+          <p className="text-xs text-muted-foreground">
+            已選：
+            <span className="font-mono text-foreground ml-1">
+              {selectedProduct.productCode}
+            </span>
+            <span className="mx-1">·</span>
+            {selectedProduct.name}
+            {selectedProduct.barcode ? (
+              <span className="font-mono ml-2">{selectedProduct.barcode}</span>
+            ) : null}
+          </p>
+        ) : null}
       </div>
 
       {err ? (
