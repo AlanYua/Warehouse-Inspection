@@ -65,10 +65,11 @@ COPY tsconfig.json ./
 COPY src ./src/
 COPY scripts/worker.ts ./scripts/worker.ts
 COPY scripts/wait-for-db-tcp.mjs ./scripts/wait-for-db-tcp.mjs
+COPY scripts/wait-for-schema.mjs ./scripts/wait-for-schema.mjs
 # tsx 在 devDependencies；NODE_ENV=production 時預設 npm ci 不會裝
 RUN npm ci --include=dev \
  && node ./node_modules/prisma/build/index.js generate
 
 ENV NODE_ENV=production
 
-CMD ["sh", "-c", "node ./scripts/wait-for-db-tcp.mjs && node ./node_modules/tsx/dist/cli.mjs scripts/worker.ts"]
+CMD ["sh", "-c", "node ./scripts/wait-for-db-tcp.mjs && node ./scripts/wait-for-schema.mjs && node ./node_modules/tsx/dist/cli.mjs scripts/worker.ts"]

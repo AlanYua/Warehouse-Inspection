@@ -36,14 +36,21 @@ async function runDbPull() {
     );
   } catch (e) {
     console.error(e);
-    await prisma.importLog.create({
-      data: {
-        source: "DB_SYNC",
-        successCount: 0,
-        errorCount: 1,
-        message: e instanceof Error ? e.message : String(e),
-      },
-    });
+    const msg = e instanceof Error ? e.message : String(e);
+    if (!/does not exist|不存在/.test(msg)) {
+      try {
+        await prisma.importLog.create({
+          data: {
+            source: "DB_SYNC",
+            successCount: 0,
+            errorCount: 1,
+            message: msg,
+          },
+        });
+      } catch (logErr) {
+        console.error("importLog write skipped:", logErr);
+      }
+    }
   }
 }
 
