@@ -25,7 +25,8 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-RUN addgroup --system --gid 1001 nodejs \
+RUN apk add --no-cache su-exec \
+ && addgroup --system --gid 1001 nodejs \
  && adduser  --system --uid 1001 nextjs
 
 COPY --from=builder /app/.next/standalone ./
@@ -43,14 +44,14 @@ COPY --from=deps /app/node_modules/@prisma ./node_modules/@prisma
 
 COPY scripts/wait-for-db-tcp.mjs ./scripts/wait-for-db-tcp.mjs
 COPY scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
- && chown -R nextjs:nodejs /app /opt/prisma-migrations
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-USER nextjs
+# entrypoint 以 root 還原 migrations，再以 su-exec 降權跑 app
+USER root
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:3000/api/health/live').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD su-exec nextjs node -e "fetch('http://127.0.0.1:3000/api/health/live').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 CMD ["/usr/local/bin/docker-entrypoint.sh"]
 

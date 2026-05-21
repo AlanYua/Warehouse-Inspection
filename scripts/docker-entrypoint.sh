@@ -10,7 +10,9 @@ fi
 
 rm -rf prisma/migrations
 mkdir -p prisma/migrations
-cp -a /opt/prisma-migrations/. prisma/migrations/
+# 勿用 cp -a：nextjs 無法 preserve ownership，會複製失敗 → P3015
+cp -r /opt/prisma-migrations/. prisma/migrations/
+chown -R nextjs:nodejs prisma/migrations
 
 if [ ! -f prisma/migrations/20260511155840_init/migration.sql ]; then
   echo "FATAL: 還原後仍找不到 prisma/migrations/20260511155840_init/migration.sql"
@@ -18,6 +20,8 @@ if [ ! -f prisma/migrations/20260511155840_init/migration.sql ]; then
   exit 1
 fi
 
-node ./scripts/wait-for-db-tcp.mjs
-node ./node_modules/prisma/build/index.js migrate deploy
-exec node server.js
+exec su-exec nextjs sh -c '
+  node ./scripts/wait-for-db-tcp.mjs
+  node ./node_modules/prisma/build/index.js migrate deploy
+  exec node server.js
+'
