@@ -235,14 +235,30 @@ export async function POST(req: Request) {
   if (channelCodes.length > 0) {
     const found = await prisma.channel.findMany({
       where: { channelCode: { in: channelCodes } },
-      select: { channelCode: true },
+      select: {
+        channelCode: true,
+        department: { select: { name: true } },
+      },
     });
     const foundSet = new Set(found.map((c) => norm(c.channelCode)));
+    const channelDeptByCode = new Map(
+      found.map((c) => [norm(c.channelCode), norm(c.department.name)]),
+    );
     for (const r of rows) {
       const code = norm(r.channelCode);
       if (!code) continue;
       if (!foundSet.has(code)) {
         pushKeyError(toKey(r), `通路代碼「${code}」不存在於通路主檔`);
+        if (validationErrors.length >= 200) break;
+        continue;
+      }
+      const excelDept = norm(r.departmentName ?? "");
+      const channelDept = channelDeptByCode.get(code) ?? "";
+      if (excelDept && channelDept && excelDept !== channelDept) {
+        pushKeyError(
+          toKey(r),
+          `部門「${excelDept}」與通路主檔中通路「${code}」所屬部門「${channelDept}」不符`,
+        );
         if (validationErrors.length >= 200) break;
       }
     }

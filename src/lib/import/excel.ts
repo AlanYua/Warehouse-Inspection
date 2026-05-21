@@ -289,6 +289,12 @@ export async function parseDocumentsExcel(
   for (const [, docLines] of byDoc) {
     const first = docLines[0];
     const docNo = first.docNo;
+    const deptSet = new Set(docLines.map((l) => l.dept));
+    if (deptSet.size > 1) {
+      throw new Error(
+        `單據 ${docNo}（通路 ${first.channel}／類型 ${first.docType}）各列部門不一致：${[...deptSet].join("、")}`,
+      );
+    }
 
     out.push({
       documentNumber: docNo,

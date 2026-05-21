@@ -84,7 +84,7 @@ export default function ImportExcelPage() {
         Excel 匯入
       </h1>
       <p className="text-sm text-muted-foreground">
-        必填：單據類型、單據日期、單據號碼、通路代碼、貨品編號或國際條碼（至少一項）、單據數量、部門。
+        必填：單據類型、單據日期、單據號碼、通路代碼、貨品編號或國際條碼（至少一項）、單據數量、部門（須與該通路代碼在通路主檔的部門一致）。
         選填：備註（未填或欄位不存在時為空）製單者未填時（預設為目前登入者）。
       </p>
       <div className="flex flex-wrap items-center gap-3">
