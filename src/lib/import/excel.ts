@@ -4,6 +4,7 @@
 import { Buffer } from "node:buffer";
 import ExcelJS from "exceljs";
 import type { ExternalDocumentRow } from "@/lib/sync/types";
+import { normChannelCode, normImportText } from "@/lib/import/normalize";
 
 export type ParseDocumentsExcelOptions = {
   /** Excel 製單者空白時使用（通常為登入者姓名） */
@@ -63,9 +64,7 @@ export const DOCUMENT_IMPORT_HEADERS = [
 ] as const;
 
 function norm(s: unknown): string {
-  return String(s ?? "")
-    .trim()
-    .replace(/\s+/g, " ");
+  return normImportText(s);
 }
 
 function inferFlowFallbackFromDocTypeText(docType: string): "OUT" | "IN" {
@@ -173,7 +172,7 @@ export async function parseDocumentsExcel(
     ? new Set(options.allowedDocumentTypes)
     : null;
   const allowedDepts = options?.allowedDepartments?.length
-    ? new Set(options.allowedDepartments)
+    ? new Set(options.allowedDepartments.map((d) => normImportText(d)))
     : null;
 
   for (let r = 2; r <= sheet.rowCount; r++) {
@@ -200,7 +199,7 @@ export async function parseDocumentsExcel(
         `第 ${r} 列單據類型「${docType}」不在設定主檔，請至「設定」維護或修正 Excel`,
       );
     }
-    const channel = getRequired("channel");
+    const channel = normChannelCode(getRequired("channel"));
     if (!channel) {
       throw new Error(`第 ${r} 列缺少必填「通路代碼」`);
     }
@@ -242,7 +241,7 @@ export async function parseDocumentsExcel(
     const creatorCell = getRequired("creator");
     const creator = creatorCell || defaultCreator;
     const docDate = parseOptionalDocDate(row, colIndex);
-    const dept = getRequired("dept");
+    const dept = normImportText(getRequired("dept"));
     if (!dept) {
       throw new Error(`第 ${r} 列缺少必填「部門」`);
     }

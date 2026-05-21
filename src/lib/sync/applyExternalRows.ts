@@ -1,4 +1,5 @@
 import { PrismaClient, DocumentFlow, DocumentSource } from "@prisma/client";
+import { normChannelCode, normImportText } from "@/lib/import/normalize";
 import { prisma as prismaSingleton } from "@/lib/prisma";
 import type { ExternalDocumentRow } from "./types";
 
@@ -65,7 +66,9 @@ export async function applyExternalRows(
 
   // 先把部門一次抓出來，避免 N+1
   const deptNames = Array.from(
-    new Set(rows.map((r) => (r.departmentName ?? "").trim()).filter(Boolean)),
+    new Set(
+      rows.map((r) => normImportText(r.departmentName ?? "")).filter(Boolean),
+    ),
   );
   const deptRows =
     deptNames.length === 0
@@ -74,7 +77,9 @@ export async function applyExternalRows(
           where: { name: { in: deptNames } },
           select: { id: true, name: true },
         });
-  const deptIdByName = new Map(deptRows.map((d) => [d.name, d.id]));
+  const deptIdByName = new Map(
+    deptRows.map((d) => [normImportText(d.name), d.id]),
+  );
 
   const chunks: ExternalDocumentRow[][] = [];
   for (let i = 0; i < rows.length; i += chunkDocs) {
@@ -82,15 +87,38 @@ export async function applyExternalRows(
   }
 
   for (const chunk of chunks) {
-    // 這批裡先檢查部門存在（把錯誤集中起來，避免 transaction 裡一個錯全批 rollback）
+    const channelCodeLookup = new Set<string>();
+    for (const r of chunk) {
+      const raw = String(r.channelCode ?? "").trim();
+      if (raw) channelCodeLookup.add(raw);
+      const n = normChannelCode(r.channelCode);
+      if (n) channelCodeLookup.add(n);
+    }
+    const channelRows =
+      channelCodeLookup.size > 0
+        ? await prisma.channel.findMany({
+            where: { channelCode: { in: [...channelCodeLookup] } },
+            select: {
+              channelCode: true,
+              departmentId: true,
+              department: { select: { name: true } },
+            },
+          })
+        : [];
+    const channelByNormCode = new Map(
+      channelRows.map((c) => [normChannelCode(c.channelCode), c]),
+    );
+
+    // 這批裡先檢查部門存在、且與通路主檔部門一致
     const okRows: ExternalDocumentRow[] = [];
     for (const r of chunk) {
-      const deptName = (r.departmentName ?? "").trim();
+      const deptName = normImportText(r.departmentName ?? "");
       const deptId = deptName ? deptIdByName.get(deptName) : null;
+      const code = normChannelCode(r.channelCode);
       const detailKey = {
         documentNumber: r.documentNumber,
         documentType: r.documentType,
-        channelCode: r.channelCode ?? "",
+        channelCode: code || (r.channelCode ?? ""),
       };
       if (!deptName) {
         const reason = "缺少部門";
@@ -103,6 +131,21 @@ export async function applyExternalRows(
         errors.push(`單據 ${r.documentNumber}: ${reason}`);
         errorDetails.push({ ...detailKey, reason });
         continue;
+      }
+      if (code) {
+        const ch = channelByNormCode.get(code);
+        if (!ch) {
+          const reason = `通路代碼「${code}」不存在於通路主檔`;
+          errors.push(`單據 ${r.documentNumber}: ${reason}`);
+          errorDetails.push({ ...detailKey, reason });
+          continue;
+        }
+        if (ch.departmentId !== deptId) {
+          const reason = `部門「${deptName}」與通路主檔中通路「${code}」所屬部門「${ch.department.name}」不符`;
+          errors.push(`單據 ${r.documentNumber}: ${reason}`);
+          errorDetails.push({ ...detailKey, reason });
+          continue;
+        }
       }
       okRows.push(r);
     }
@@ -133,12 +176,12 @@ export async function applyExternalRows(
       const ids: string[] = [];
 
       for (const r of okRows) {
-        const deptId = deptIdByName.get((r.departmentName ?? "").trim())!;
+        const deptId = deptIdByName.get(normImportText(r.departmentName ?? ""))!;
         const docDate = r.documentDate ? new Date(r.documentDate) : null;
         const flow: DocumentFlow =
           r.flow === "IN" ? DocumentFlow.IN : DocumentFlow.OUT;
 
-        const channelCode = (r.channelCode ?? "").trim() || null;
+        const channelCode = normChannelCode(r.channelCode) || null;
         const ch = channelCode
           ? await tx.channel.findUnique({
               where: { channelCode },

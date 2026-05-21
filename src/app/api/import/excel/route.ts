@@ -11,6 +11,7 @@ import {
   getSessionUser,
 } from "@/lib/api-guard";
 import { parseDocumentsExcel } from "@/lib/import/excel";
+import { normChannelCode, normImportText } from "@/lib/import/normalize";
 import { applyExternalRows } from "@/lib/sync/applyExternalRows";
 import ExcelJS from "exceljs";
 import { log } from "@/lib/logger";
@@ -112,10 +113,13 @@ export async function POST(req: Request) {
   if (f) return f;
 
   const deptOpts = await prisma.department.findMany({
-    select: { name: true },
+    select: { id: true, name: true },
     orderBy: { name: "asc" },
   });
   const allowedDepartments = deptOpts.map((d) => d.name);
+  const deptIdByNormName = new Map(
+    deptOpts.map((d) => [normImportText(d.name), d.id]),
+  );
   if (allowedDepartments.length === 0) {
     return NextResponse.json(
       { error: "尚未建立部門，請先至「設定」新增部門後再匯入。" },
@@ -209,7 +213,7 @@ export async function POST(req: Request) {
   const toKey = (r: (typeof rows)[number]): Key => {
     const documentNumber = norm(r.documentNumber);
     const documentType = norm(r.documentType);
-    const channelCode = norm(r.channelCode);
+    const channelCode = normChannelCode(r.channelCode);
     return { documentNumber, documentType, channelCode };
   };
 
@@ -228,36 +232,49 @@ export async function POST(req: Request) {
     validationErrors.push(`${keyLabel(key)}：${reason}`);
   };
 
-  // 0) 通路代碼必須存在於通路主檔
-  const channelCodes = Array.from(
-    new Set(rows.map((r) => norm(r.channelCode)).filter(Boolean)),
-  );
-  if (channelCodes.length > 0) {
+  // 0) 通路代碼必須存在於通路主檔，且 Excel 部門須與通路所屬部門一致（比對 departmentId）
+  const channelCodeLookup = new Set<string>();
+  for (const r of rows) {
+    const raw = String(r.channelCode ?? "").trim();
+    if (raw) channelCodeLookup.add(raw);
+    const n = normChannelCode(r.channelCode);
+    if (n) channelCodeLookup.add(n);
+  }
+  if (channelCodeLookup.size > 0) {
     const found = await prisma.channel.findMany({
-      where: { channelCode: { in: channelCodes } },
+      where: { channelCode: { in: [...channelCodeLookup] } },
       select: {
         channelCode: true,
+        departmentId: true,
         department: { select: { name: true } },
       },
     });
-    const foundSet = new Set(found.map((c) => norm(c.channelCode)));
-    const channelDeptByCode = new Map(
-      found.map((c) => [norm(c.channelCode), norm(c.department.name)]),
+    const channelByNormCode = new Map(
+      found.map((c) => [normChannelCode(c.channelCode), c]),
     );
     for (const r of rows) {
-      const code = norm(r.channelCode);
+      const code = normChannelCode(r.channelCode);
       if (!code) continue;
-      if (!foundSet.has(code)) {
+      const ch = channelByNormCode.get(code);
+      if (!ch) {
         pushKeyError(toKey(r), `通路代碼「${code}」不存在於通路主檔`);
         if (validationErrors.length >= 200) break;
         continue;
       }
-      const excelDept = norm(r.departmentName ?? "");
-      const channelDept = channelDeptByCode.get(code) ?? "";
-      if (excelDept && channelDept && excelDept !== channelDept) {
+      const excelDept = normImportText(r.departmentName ?? "");
+      const excelDeptId = deptIdByNormName.get(excelDept);
+      if (!excelDeptId) {
         pushKeyError(
           toKey(r),
-          `部門「${excelDept}」與通路主檔中通路「${code}」所屬部門「${channelDept}」不符`,
+          `部門「${excelDept}」不在設定主檔，請至「設定」維護或修正 Excel`,
+        );
+        if (validationErrors.length >= 200) break;
+        continue;
+      }
+      if (ch.departmentId !== excelDeptId) {
+        pushKeyError(
+          toKey(r),
+          `部門「${excelDept}」與通路主檔中通路「${code}」所屬部門「${ch.department.name}」不符`,
         );
         if (validationErrors.length >= 200) break;
       }
