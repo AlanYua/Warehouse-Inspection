@@ -55,10 +55,9 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
 
 CMD ["/usr/local/bin/docker-entrypoint.sh"]
 
-# ------- worker（背景排程，與 app 共用同一映像建置鏈） -------
+# ------- worker（背景排程；需 tsx 跑 TypeScript） -------
 FROM base AS worker
 WORKDIR /app
-ENV NODE_ENV=production
 
 COPY package.json package-lock.json ./
 COPY prisma ./prisma/
@@ -66,6 +65,10 @@ COPY tsconfig.json ./
 COPY src ./src/
 COPY scripts/worker.ts ./scripts/worker.ts
 COPY scripts/wait-for-db-tcp.mjs ./scripts/wait-for-db-tcp.mjs
-RUN npm ci && node ./node_modules/prisma/build/index.js generate
+# tsx 在 devDependencies；NODE_ENV=production 時預設 npm ci 不會裝
+RUN npm ci --include=dev \
+ && node ./node_modules/prisma/build/index.js generate
+
+ENV NODE_ENV=production
 
 CMD ["sh", "-c", "node ./scripts/wait-for-db-tcp.mjs && node ./node_modules/tsx/dist/cli.mjs scripts/worker.ts"]
