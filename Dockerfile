@@ -13,6 +13,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NODE_ENV=production
+# public/ 可能未進 git；確保目錄存在，避免 runner COPY /app/public 失敗
+RUN mkdir -p public
 RUN npx prisma generate && npm run build \
  && test -f prisma/migrations/20260511155840_init/migration.sql
 
@@ -26,8 +28,9 @@ ENV HOSTNAME=0.0.0.0
 RUN addgroup --system --gid 1001 nodejs \
  && adduser  --system --uid 1001 nextjs
 
-COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
+# builder 已 mkdir -p public；靜態檔亦會在 standalone/public
+COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma/schema.prisma ./prisma/schema.prisma
 # 與 /app 分開存放，避免 standalone 覆蓋；啟動時 entrypoint 再 cp 到 prisma/migrations
