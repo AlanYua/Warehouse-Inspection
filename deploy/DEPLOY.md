@@ -162,6 +162,7 @@ crontab -e
 | 現象 | 處理 |
 |------|------|
 | **Deploy 秒失敗、`db` unhealthy** | 幾乎都是 **`DB_PASSWORD` 未填或空**（`postgres` 映像會立刻退出）。Coolify 環境變數鍵名必須是 **`DB_PASSWORD`**。另可 SSH：`docker logs <db 容器名>`。若曾用錯密碼／空密碼寫入過 volume，刪除該 stack 的 **`pgdata` volume** 後再部署。 |
+| **`migrate deploy` P3015**（`ls` 有檔仍失敗） | 在 **app** 容器用 `cat` 還原（勿只靠 `cp`）：`rm -rf prisma/migrations && mkdir -p prisma/migrations && for d in /opt/prisma-migrations/*/; do n=$(basename "$d"); mkdir -p prisma/migrations/$n; [ -f "$d/migration.sql" ] && cat "$d/migration.sql" > prisma/migrations/$n/migration.sql; done && wc -c prisma/migrations/20260511155840_init/migration.sql`。檢查 Coolify **Persistent Storage** 是否掛在 `prisma/migrations`（會蓋掉空目錄）。 |
 | 登入後馬上登出 | `AUTH_URL` 必須與瀏覽器網址完全一致（https、無尾斜線） |
 | 502 Bad Gateway | app 未起來；看 app container log、RAM 是否不足 |
 | migrate 失敗 | DB 已是舊 schema：依 `.env.example` 註解跑 `prisma migrate resolve` |
