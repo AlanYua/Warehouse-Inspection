@@ -8,9 +8,11 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     await prisma.$queryRaw`SELECT 1`;
+    const authConfigured = !!(process.env.AUTH_SECRET?.trim() || process.env.NEXTAUTH_SECRET?.trim());
     return NextResponse.json({
       ok: true,
       db: "ok",
+      auth: authConfigured ? "ok" : "missing_secret",
       now: new Date().toISOString(),
     });
   } catch {

@@ -8,8 +8,12 @@ import { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
 
+const authSecret =
+  process.env.AUTH_SECRET?.trim() || process.env.NEXTAUTH_SECRET?.trim();
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
+  secret: authSecret,
   providers: [
     Credentials({
       name: "credentials",
