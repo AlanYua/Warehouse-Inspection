@@ -22,9 +22,13 @@ async function main() {
     );
   }
   const hash = await bcrypt.hash(adminPassword, 10);
+  const adminUpdate =
+    process.env.ADMIN_PASSWORD != null && process.env.ADMIN_PASSWORD !== ""
+      ? { passwordHash: hash, name: "管理者", role: Role.ADMIN, isActive: true }
+      : {};
   await prisma.user.upsert({
     where: { username: "admin" },
-    update: {},
+    update: adminUpdate,
     create: {
       username: "admin",
       passwordHash: hash,
