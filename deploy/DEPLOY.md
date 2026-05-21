@@ -145,7 +145,7 @@ crontab -e
 0 3 * * * cd /data/coolify/.../your-project && ./scripts/backup-db.sh
 ```
 
-備份檔在 `backups/`。請再 **rsync 到機外**（另一台 VPS、S3、R2、本機 NAS）。
+備份檔預設在專案根目錄 `backups/`（本機開發若曾封存舊 dump，可能在 `_archive/backups/`）。請再 **rsync 到機外**（另一台 VPS、S3、R2、本機 NAS）。
 
 ---
 

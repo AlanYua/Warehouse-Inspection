@@ -1,13 +1,9 @@
 {
   "files.exclude": {
-    "**/server": true,
-    "**/web": true,
-    "**/backups": true
+    "**/_archive": true
   },
   "search.exclude": {
-    "**/server/**": true,
-    "**/web/**": true,
-    "**/backups/**": true
+    "**/_archive/**": true
   },
   "css.lint.unknownAtRules": "ignore",
   "scss.lint.unknownAtRules": "ignore",

@@ -16,10 +16,8 @@ const eslintConfig = defineConfig([
     // macOS AppleDouble 垃圾檔（會害 parser 報錯）
     "**/._*",
     ".DS_Store",
-    // repo 內保留但不納入主線（Next-only）
-    "server/**",
-    "web/**",
-    "backups/**",
+    // 封存區（歷史/實驗/一次性腳本）
+    "_archive/**",
   ]),
 ]);
 

@@ -2,7 +2,7 @@
 
 ### 架構（只留 Next）
 - **唯一入口**：Next.js App Router（`src/app`）同時提供 UI + `/api/*`。
-- repo 內的 `server/`、`web/` 是歷史/實驗保留，**不再作為啟動/部署目標**（已從 ESLint/TS exclude）。
+- 歷史實驗碼、mockup、舊 dump、一次性腳本 → **`_archive/`**（見該目錄 README，確認後可自行刪除）。
 
 ### 需求
 - Node.js 20+

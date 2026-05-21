@@ -74,7 +74,7 @@ if (-not $haveEmail) {
 
 # Drop huge dirs from index if they were staged (e.g. web/node_modules)
 $ErrorActionPreference = "Continue"
-foreach ($p in @("web/node_modules", "node_modules", ".next", ".next-dev")) {
+foreach ($p in @("_archive/legacy-web/web/node_modules", "_archive/**/node_modules", "node_modules", ".next", ".next-dev")) {
   if (Test-Path -LiteralPath (Join-Path $root $p)) {
     & $gitExe rm -r --cached --ignore-unmatch -- $p 2>$null | Out-Null
   }
