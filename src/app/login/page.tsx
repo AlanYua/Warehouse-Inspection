@@ -50,12 +50,7 @@ function LoginForm() {
         onSubmit={onSubmit}
         className="panel w-full max-w-md space-y-5 p-6 sm:p-8 shadow-md"
       >
-        <div className="text-center space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Warehouse
-          </p>
-          <h1 className="page-title text-center text-2xl sm:text-3xl">倉庫驗收系統</h1>
-        </div>
+        <h1 className="page-title text-center text-2xl sm:text-3xl">Warehouse Inspection</h1>
         {idleMsg && (
           <p className="text-sm text-amber-700 dark:text-amber-400 text-center">
             {idleMsg}

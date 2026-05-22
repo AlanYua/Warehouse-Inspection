@@ -19,7 +19,7 @@ export async function AppNav() {
     items.push({ href: "/reports/daily", label: "日報表" });
   }
   if (can(r, "reports.shipping-history.view")) {
-    items.push({ href: "/reports/shipping-history", label: "出貨歷史" });
+    items.push({ href: "/reports/shipping-history", label: "歷史紀錄" });
   }
   if (can(r, "documents.import")) items.push({ href: "/documents/import", label: "匯入" });
   if (can(r, "documents.import") || can(r, "settings.print")) {
