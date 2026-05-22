@@ -14,6 +14,7 @@ import {
   acquireOrTouchLock,
   type InspectAs,
 } from "@/lib/documents/lock";
+import { inspectionDocDetailInclude } from "@/lib/documents/doc-detail-include";
 import { syncLineStorageFromProducts } from "@/lib/documents/syncLineStorageFromProducts";
 import { writeAudit } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
@@ -104,13 +105,7 @@ export async function POST(
   await syncLineStorageFromProducts(lineRows);
   const doc = await prisma.inspectionDoc.findUnique({
     where: { id },
-    include: {
-      department: true,
-      lines: true,
-      lockedBy: { select: { id: true, name: true, username: true } },
-      inspector: { select: { id: true, name: true, username: true } },
-      picker: { select: { id: true, name: true, username: true } },
-    },
+    include: inspectionDocDetailInclude,
   });
   // 只在「從無鎖→有鎖」或「身份首次設定」時記錄，避免續期 touch 也產生大量噪音紀錄
   const isNewLock = !beforeLock?.lockedByUserId;

@@ -11,6 +11,7 @@ import {
   getSessionUser,
 } from "@/lib/api-guard";
 import { writeAudit } from "@/lib/audit";
+import { inspectionDocDetailInclude } from "@/lib/documents/doc-detail-include";
 import { resolveShipDelivery } from "@/lib/documents/ship-delivery";
 import { z } from "zod";
 
@@ -108,12 +109,7 @@ export async function POST(
   });
   const out = await prisma.inspectionDoc.findUnique({
     where: { id },
-    include: {
-      lines: true,
-      department: true,
-      inspector: { select: { id: true, name: true, username: true } },
-      picker: { select: { id: true, name: true, username: true } },
-    },
+    include: inspectionDocDetailInclude,
   });
   await writeAudit({
     user: u,

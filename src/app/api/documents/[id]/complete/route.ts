@@ -11,6 +11,7 @@ import {
   getSessionUser,
 } from "@/lib/api-guard";
 import { assertCanEditDoc } from "@/lib/documents/lock";
+import { inspectionDocDetailInclude } from "@/lib/documents/doc-detail-include";
 import { syncLineStorageFromProducts } from "@/lib/documents/syncLineStorageFromProducts";
 import { writeAudit } from "@/lib/audit";
 import { z } from "zod";
@@ -142,13 +143,7 @@ export async function POST(
   await syncLineStorageFromProducts(lineRows);
   const doc = await prisma.inspectionDoc.findUnique({
     where: { id },
-    include: {
-      department: true,
-      lines: true,
-      lockedBy: { select: { id: true, name: true, username: true } },
-      inspector: { select: { id: true, name: true, username: true } },
-      picker: { select: { id: true, name: true, username: true } },
-    },
+    include: inspectionDocDetailInclude,
   });
   await writeAudit({
     user: u,

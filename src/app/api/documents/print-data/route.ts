@@ -9,6 +9,7 @@ import {
   forbidIfNoPermission,
   getSessionUser,
 } from "@/lib/api-guard";
+import { documentLinesOrderBy } from "@/lib/documents/doc-detail-include";
 
 const PRINT_SETTINGS_ID = 1;
 
@@ -31,7 +32,7 @@ export async function GET(req: Request) {
       where: { id: { in: ids } },
       include: {
         department: true,
-        lines: true,
+        lines: { orderBy: documentLinesOrderBy },
         picker: { select: { username: true } },
         inspector: { select: { username: true } },
       },

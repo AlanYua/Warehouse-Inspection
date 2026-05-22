@@ -23,7 +23,7 @@ import { BarcodeCamera } from "@/components/BarcodeCamera";
 import { canDeleteDocument } from "@/lib/documents/delete-guard";
 import { can } from "@/lib/permissions";
 import type { Doc } from "./inspect-types";
-import { statusLabel, flowZh, compareStorageLocation } from "./inspect-types";
+import { statusLabel, flowZh, sortDocumentLines } from "./inspect-types";
 import InspectProgress from "./inspect-progress";
 import InspectRoleModal from "./inspect-role-modal";
 import LineItemsView, { type LineItemsLineMode } from "./line-items-view";
@@ -494,12 +494,37 @@ export default function DocumentInspect({ id }: { id: string }) {
       return;
     }
 
-    void savePatch({
-      acceptMethod: AcceptMethod.BARCODE,
-      lines: [{ id: line.id, inspectQuantity: nextQty }],
-    });
+    const snapshot = doc;
+    setDoc((d) =>
+      d
+        ? {
+            ...d,
+            acceptMethod: AcceptMethod.BARCODE,
+            lines: d.lines.map((x) =>
+              x.id === line.id ? { ...x, inspectQuantity: nextQty } : x,
+            ),
+          }
+        : d,
+    );
     setManualCode("");
     setErr(null);
+    void (async () => {
+      const res = await fetch(`/api/documents/${id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          acceptMethod: AcceptMethod.BARCODE,
+          lines: [{ id: line.id, inspectQuantity: nextQty }],
+        }),
+      });
+      if (!res.ok) {
+        setDoc(snapshot);
+        setErr(await res.text());
+        return;
+      }
+      setDoc(await res.json());
+    })();
   }
 
   if (!doc) {
@@ -617,8 +642,9 @@ export default function DocumentInspect({ id }: { id: string }) {
     ((doc.inspector?.id === selfId) ||
       (doc.picker?.id === selfId && !doc.inspector));
 
-  const linesSorted = [...doc.lines].sort((x, y) =>
-    compareStorageLocation(x.storageLocation, y.storageLocation),
+  const linesSorted = sortDocumentLines(
+    doc.lines,
+    doc.status === DocumentStatus.INSPECTING ? "inspect" : "storage",
   );
 
   const totalDocQty = doc.lines.reduce((s, l) => s + l.docQuantity, 0);

@@ -12,6 +12,7 @@ import {
 } from "@/lib/api-guard";
 import { canDeleteDocument } from "@/lib/documents/delete-guard";
 import { assertCanEditDoc } from "@/lib/documents/lock";
+import { inspectionDocDetailInclude } from "@/lib/documents/doc-detail-include";
 import { syncLineStorageFromProducts } from "@/lib/documents/syncLineStorageFromProducts";
 import { writeAudit } from "@/lib/audit";
 import { z } from "zod";
@@ -76,18 +77,9 @@ export async function GET(
   const fg = forbidIfNoPermission(u.role, "documents.view");
   if (fg) return fg;
   const { id } = await ctx.params;
-  const docInclude = {
-    department: true,
-    lines: true,
-    lockedBy: { select: { id: true, name: true, username: true } },
-    inspector: { select: { id: true, name: true, username: true } },
-    picker: { select: { id: true, name: true, username: true } },
-    stockedBy: { select: { id: true, name: true, username: true } },
-  } as const;
-
   const doc = await prisma.inspectionDoc.findUnique({
     where: { id },
-    include: docInclude,
+    include: inspectionDocDetailInclude,
   });
   if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -100,7 +92,7 @@ export async function GET(
 
   const docFresh = await prisma.inspectionDoc.findUnique({
     where: { id },
-    include: docInclude,
+    include: inspectionDocDetailInclude,
   });
   return NextResponse.json(docFresh!);
 }
@@ -244,22 +236,9 @@ export async function PATCH(
     }
   }
 
-  const lineRows = await prisma.documentLine.findMany({
-    where: { documentId: id },
-    select: { id: true, productCode: true, storageLocation: true },
-  });
-  await syncLineStorageFromProducts(lineRows);
-
   const doc = await prisma.inspectionDoc.findUnique({
     where: { id },
-    include: {
-      department: true,
-      lines: true,
-      lockedBy: { select: { id: true, name: true, username: true } },
-      inspector: { select: { id: true, name: true, username: true } },
-      picker: { select: { id: true, name: true, username: true } },
-      stockedBy: { select: { id: true, name: true, username: true } },
-    },
+    include: inspectionDocDetailInclude,
   });
   const qtyChanges = (lines ?? []).filter((l) => l.inspectQuantity !== undefined).length;
   const pickedChanges = (lines ?? []).filter((l) => l.pickerPicked !== undefined).length;

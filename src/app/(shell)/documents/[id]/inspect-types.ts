@@ -83,3 +83,21 @@ export function compareStorageLocation(a: string | null, b: string | null) {
 
   return storageCollator.compare(aU, bU);
 }
+
+/** 驗收中固定匯入序；其餘依儲位＋貨號＋id 穩定排序 */
+export function sortDocumentLines(
+  lines: Line[],
+  mode: "inspect" | "storage",
+): Line[] {
+  const copy = [...lines];
+  if (mode === "inspect") {
+    return copy.sort((a, b) => a.id.localeCompare(b.id));
+  }
+  return copy.sort((a, b) => {
+    const loc = compareStorageLocation(a.storageLocation, b.storageLocation);
+    if (loc !== 0) return loc;
+    const code = a.productCode.localeCompare(b.productCode, "en");
+    if (code !== 0) return code;
+    return a.id.localeCompare(b.id);
+  });
+}
