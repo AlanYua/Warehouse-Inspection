@@ -121,22 +121,6 @@ export default function DocumentInspect({ id }: { id: string }) {
     canShip,
   ]);
 
-  useEffect(() => {
-    if (!doc || doc.status !== DocumentStatus.COMPLETED || !canShip) return;
-    if (doc.flow !== "OUT") return;
-    if (!selfPickup && !warehouseDelivery) return;
-    const t = setTimeout(() => void ship(), 1200);
-    return () => clearTimeout(t);
-  }, [
-    selfPickup,
-    warehouseDelivery,
-    packageCountA,
-    packageCountC,
-    packageSize,
-    doc,
-    canShip,
-  ]);
-
   async function ensureLock(inspectAs: "PICKER" | "INSPECTOR") {
     const res = await fetch(`/api/documents/${id}/lock`, {
       method: "POST",
@@ -668,7 +652,7 @@ export default function DocumentInspect({ id }: { id: string }) {
       )}
       {completed && !shipped && doc.flow === "OUT" && (
         <p className="text-sm text-emerald-900 bg-emerald-50 border border-emerald-200 p-2 rounded">
-          已完成驗收。填物流單號或勾選自取／倉庫親送後自動出貨（可取／倉親送時 A/C 選填作紀錄）；需列印請按單據區塊上的「列印」。
+          已完成驗收。填寫物流單號後自動出貨；自取／倉庫親送請勾選後按「出貨」（A/C 選填作紀錄）；需列印請按單據區塊上的「列印」。
         </p>
       )}
       {completed && !shipped && doc.flow === "IN" && !stocked && (

@@ -489,8 +489,7 @@ export async function GET(req: Request) {
     ]);
     returnPieces = returnPiecesAgg._sum.pieceCount ?? 0;
     selfDeliveryPackages = selfDeliveryAgg._sum.packageCount ?? 0;
-    const carrierLogisticsPackages = carrierLogisticsAgg._sum.packageCount ?? 0;
-    logisticsPackages = carrierLogisticsPackages + selfDeliveryPackages;
+    logisticsPackages = carrierLogisticsAgg._sum.packageCount ?? 0;
 
     const selfDeliveryByDeptMap = Object.fromEntries(
       selfDeliveryDeptRows.map((r) => [

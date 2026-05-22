@@ -4,7 +4,7 @@ export type Dash = {
     inspecting: number;
     completed: number;
     shipped: number;
-    /** 物流件數（含自送） */
+    /** 物流件數（不含自取／倉庫親送） */
     logisticsPackages: number;
     /** 自送件數（自取 + 倉庫親送） */
     selfDeliveryPackages: number;
