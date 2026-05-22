@@ -6,13 +6,13 @@ export function isReturnDocumentType(documentType: string): boolean {
 
 export type ShippingHistorySummary = {
   purchaseQty: number;
-  salesQty: number;
+  shippedQty: number;
   customerReturnQty: number;
-  vendorReturnQty: number;
+  supplierReturnQty: number;
   netStock: number;
 };
 
-/** 依驗收量彙總；淨庫存 = 進貨 − 銷貨 + 客戶退貨 − 廠商退貨 */
+/** 依驗收量彙總；淨庫存 = 進貨 − 出貨 + 客戶退貨 − 退供應商 */
 export function summarizeShippingHistory(
   lines: {
     inspectQuantity: number;
@@ -20,9 +20,9 @@ export function summarizeShippingHistory(
   }[],
 ): ShippingHistorySummary {
   let purchaseQty = 0;
-  let salesQty = 0;
+  let shippedQty = 0;
   let customerReturnQty = 0;
-  let vendorReturnQty = 0;
+  let supplierReturnQty = 0;
 
   for (const l of lines) {
     const q = l.inspectQuantity;
@@ -32,22 +32,22 @@ export function summarizeShippingHistory(
 
     if (isReturnDocumentType(dt)) {
       if (flow === "IN") customerReturnQty += q;
-      else vendorReturnQty += q;
+      else supplierReturnQty += q;
     } else if (flow === "IN") {
       purchaseQty += q;
     } else {
-      salesQty += q;
+      shippedQty += q;
     }
   }
 
   const netStock =
-    purchaseQty - salesQty + customerReturnQty - vendorReturnQty;
+    purchaseQty - shippedQty + customerReturnQty - supplierReturnQty;
 
   return {
     purchaseQty,
-    salesQty,
+    shippedQty,
     customerReturnQty,
-    vendorReturnQty,
+    supplierReturnQty,
     netStock,
   };
 }

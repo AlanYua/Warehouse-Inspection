@@ -24,9 +24,9 @@ type Payload = {
   } | null;
   summary: {
     purchaseQty: number;
-    salesQty: number;
+    shippedQty: number;
     customerReturnQty: number;
-    vendorReturnQty: number;
+    supplierReturnQty: number;
     netStock: number;
   };
   total: number;
@@ -34,6 +34,7 @@ type Payload = {
 };
 
 type BrandOption = { id: string; name: string; isActive: boolean };
+type Department = { id: string; name: string };
 
 type ProductOption = {
   productCode: string;
@@ -73,7 +74,9 @@ function qtyClass(n: number) {
 
 export default function ShippingHistoryClient() {
   const [brands, setBrands] = useState<BrandOption[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [brand, setBrand] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
   const [keyword, setKeyword] = useState("");
   const [productOptions, setProductOptions] = useState<ProductOption[]>([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
@@ -90,9 +93,17 @@ export default function ShippingHistoryClient() {
   const activeBrands = brands.filter((b) => b.isActive);
 
   useEffect(() => {
-    void fetch("/api/brands", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : []))
-      .then((rows: BrandOption[]) => setBrands(Array.isArray(rows) ? rows : []));
+    void Promise.all([
+      fetch("/api/brands", { credentials: "include" }),
+      fetch("/api/departments", { credentials: "include" }),
+    ]).then(([br, de]) =>
+      Promise.all([br.ok ? br.json() : [], de.ok ? de.json() : []]).then(
+        ([brandRows, deptRows]) => {
+          setBrands(Array.isArray(brandRows) ? brandRows : []);
+          setDepartments(Array.isArray(deptRows) ? deptRows : []);
+        },
+      ),
+    );
   }, []);
 
   useEffect(() => {
@@ -201,6 +212,7 @@ export default function ShippingHistoryClient() {
     setErr(null);
     try {
       const sp = new URLSearchParams({ q });
+      if (departmentId) sp.set("departmentId", departmentId);
       if (dateFrom) sp.set("dateFrom", dateFrom);
       if (dateTo) sp.set("dateTo", dateTo);
       if (flow) sp.set("flow", flow);
@@ -298,6 +310,21 @@ export default function ShippingHistoryClient() {
             ) : null}
           </div>
           <div>
+            <label className="block text-xs text-muted-foreground">部門</label>
+            <select
+              className={`${inputCls} w-36`}
+              value={departmentId}
+              onChange={(e) => setDepartmentId(e.target.value)}
+            >
+              <option value="">全部</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label className="block text-xs text-muted-foreground">起日</label>
             <input
               type="date"
@@ -381,9 +408,9 @@ export default function ShippingHistoryClient() {
             </strong>
           </span>
           <span>
-            銷貨量{" "}
+            出貨量{" "}
             <strong className="tabular-nums text-foreground">
-              {fmtAbs(data.summary.salesQty)}
+              {fmtAbs(data.summary.shippedQty)}
             </strong>
           </span>
           <span>
@@ -393,9 +420,9 @@ export default function ShippingHistoryClient() {
             </strong>
           </span>
           <span>
-            廠商退貨量{" "}
+            退供應商量{" "}
             <strong className="tabular-nums text-foreground">
-              {fmtAbs(data.summary.vendorReturnQty)}
+              {fmtAbs(data.summary.supplierReturnQty)}
             </strong>
           </span>
           <span>

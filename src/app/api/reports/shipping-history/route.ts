@@ -1,6 +1,6 @@
 /**
  * 品項出貨／入庫歷史（唯讀查詢）：依貨號或條碼查驗入驗出數量
- * URL: GET /api/reports/shipping-history?q=...&dateFrom=&dateTo=&flow=OUT|IN
+ * URL: GET /api/reports/shipping-history?q=...&departmentId=&dateFrom=&dateTo=&flow=OUT|IN
  */
 import { NextResponse } from "next/server";
 import { DocumentStatus, Prisma } from "@prisma/client";
@@ -12,6 +12,7 @@ import { summarizeShippingHistory } from "@/lib/shipping-history-summary";
 
 const querySchema = z.object({
   q: z.string().min(1),
+  departmentId: z.string().min(1).optional(),
   flow: z.enum(["OUT", "IN"]).optional(),
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
@@ -72,6 +73,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const parsed = querySchema.safeParse({
     q: url.searchParams.get("q") ?? "",
+    departmentId: url.searchParams.get("departmentId") ?? undefined,
     flow: url.searchParams.get("flow") ?? undefined,
     dateFrom: url.searchParams.get("dateFrom") ?? undefined,
     dateTo: url.searchParams.get("dateTo") ?? undefined,
@@ -129,9 +131,9 @@ export async function GET(req: Request) {
       product: null,
       summary: {
         purchaseQty: 0,
-        salesQty: 0,
+        shippedQty: 0,
         customerReturnQty: 0,
-        vendorReturnQty: 0,
+        supplierReturnQty: 0,
         netStock: 0,
       },
       rows: [],
@@ -139,7 +141,11 @@ export async function GET(req: Request) {
     });
   }
 
-  const docWhere: Prisma.InspectionDocWhereInput =
+  const deptFilter = parsed.data.departmentId
+    ? { departmentId: parsed.data.departmentId }
+    : {};
+
+  const flowWhere: Prisma.InspectionDocWhereInput =
     parsed.data.flow === "OUT"
       ? { flow: "OUT", status: DocumentStatus.SHIPPED, shippedAt: { not: null } }
       : parsed.data.flow === "IN"
@@ -162,6 +168,11 @@ export async function GET(req: Request) {
               },
             ],
           };
+
+  const docWhere: Prisma.InspectionDocWhereInput = {
+    ...flowWhere,
+    ...deptFilter,
+  };
 
   const lines = await prisma.documentLine.findMany({
     where: {
