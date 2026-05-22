@@ -8,6 +8,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { forbidIfNoPermission, getSessionUser } from "@/lib/api-guard";
 import { codesMatchProduct, normBarcode, normCode } from "@/lib/product-code";
+import { summarizeShippingHistory } from "@/lib/shipping-history-summary";
 
 const querySchema = z.object({
   q: z.string().min(1),
@@ -126,7 +127,13 @@ export async function GET(req: Request) {
     return NextResponse.json({
       query: rawQ,
       product: null,
-      summary: { netDocQty: 0, netInspectQty: 0 },
+      summary: {
+        purchaseQty: 0,
+        salesQty: 0,
+        customerReturnQty: 0,
+        vendorReturnQty: 0,
+        netStock: 0,
+      },
       rows: [],
       total: 0,
     });
@@ -204,12 +211,7 @@ export async function GET(req: Request) {
   const total = dated.length;
   const page = dated.slice(skip, skip + take);
 
-  let netDocQty = 0;
-  let netInspectQty = 0;
-  for (const l of dated) {
-    netDocQty += signedQty(l.docQuantity, l.document.flow);
-    netInspectQty += signedQty(l.inspectQuantity, l.document.flow);
-  }
+  const summary = summarizeShippingHistory(dated);
 
   const product =
     products.find((p) => codesMatchProduct(rawQ, p.productCode, p.barcode)) ??
@@ -231,7 +233,7 @@ export async function GET(req: Request) {
             barcode: page[0].barcode,
           }
         : null,
-    summary: { netDocQty, netInspectQty },
+    summary,
     total,
     rows: page.map((l) => {
       const d = l.document;

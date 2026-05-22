@@ -22,7 +22,13 @@ type Payload = {
     name: string;
     barcode: string | null;
   } | null;
-  summary: { netDocQty: number; netInspectQty: number };
+  summary: {
+    purchaseQty: number;
+    salesQty: number;
+    customerReturnQty: number;
+    vendorReturnQty: number;
+    netStock: number;
+  };
   total: number;
   rows: HistoryRow[];
 };
@@ -369,18 +375,36 @@ export default function ShippingHistoryClient() {
       {data ? (
         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
           <span>
-            淨單據量{" "}
-            <strong className={`tabular-nums ${qtyClass(data.summary.netDocQty)}`}>
-              {fmtSignedQty(data.summary.netDocQty)}
+            進貨量{" "}
+            <strong className="tabular-nums text-foreground">
+              {fmtAbs(data.summary.purchaseQty)}
             </strong>
           </span>
           <span>
-            淨驗收量{" "}
-            <strong className={`tabular-nums ${qtyClass(data.summary.netInspectQty)}`}>
-              {fmtSignedQty(data.summary.netInspectQty)}
+            銷貨量{" "}
+            <strong className="tabular-nums text-foreground">
+              {fmtAbs(data.summary.salesQty)}
             </strong>
           </span>
-          <span>筆數 {data.total}</span>
+          <span>
+            客戶退貨量{" "}
+            <strong className="tabular-nums text-foreground">
+              {fmtAbs(data.summary.customerReturnQty)}
+            </strong>
+          </span>
+          <span>
+            廠商退貨量{" "}
+            <strong className="tabular-nums text-foreground">
+              {fmtAbs(data.summary.vendorReturnQty)}
+            </strong>
+          </span>
+          <span>
+            淨庫存{" "}
+            <strong className={`tabular-nums ${qtyClass(data.summary.netStock)}`}>
+              {fmtSignedQty(data.summary.netStock)}
+            </strong>
+          </span>
+          <span>總筆數 {data.total}</span>
         </div>
       ) : null}
 
