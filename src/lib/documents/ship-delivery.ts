@@ -2,16 +2,16 @@ export const LOGISTICS_SELF_PICKUP = "自取";
 export const LOGISTICS_WAREHOUSE_DELIVERY = "倉庫親送";
 
 /** 自送：自取 + 倉庫親送（logisticsNo 固定字樣） */
-export const SELF_DELIVERY_LOGISTICS_NOS = [
+export const SELF_DELIVERY_LOGISTICS_NOS: string[] = [
   LOGISTICS_SELF_PICKUP,
   LOGISTICS_WAREHOUSE_DELIVERY,
-] as const;
+];
 
 export function isSelfDeliveryLogistics(
   logisticsNo: string | null | undefined,
 ): boolean {
   const ln = (logisticsNo ?? "").trim();
-  return (SELF_DELIVERY_LOGISTICS_NOS as readonly string[]).includes(ln);
+  return SELF_DELIVERY_LOGISTICS_NOS.includes(ln);
 }
 
 export type ShipDeliveryInput = {

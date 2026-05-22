@@ -444,10 +444,10 @@ export async function GET(req: Request) {
       ...dateFilter,
       status: DocumentStatus.SHIPPED,
       packageCount: { not: null },
-    } as const;
+    };
     const selfDeliveryLogisticsWhere = {
-      logisticsNo: { in: [...SELF_DELIVERY_LOGISTICS_NOS] },
-    } as const;
+      logisticsNo: { in: SELF_DELIVERY_LOGISTICS_NOS },
+    };
 
     const [
       returnPiecesAgg,
