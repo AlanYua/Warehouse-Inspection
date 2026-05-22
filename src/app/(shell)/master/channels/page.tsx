@@ -8,6 +8,7 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { FilterBar, Field } from "@/components/ui/page-shell";
 import { can } from "@/lib/permissions";
 
 type Dept = { id: string; name: string };
@@ -42,29 +43,23 @@ export default function ChannelsPage() {
   });
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [loadedOnce, setLoadedOnce] = useState(false);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 100;
 
-  const keywordTrim = keyword.trim();
-  const visibleRows = rows.filter((r) => {
-    if (!keywordTrim) return true;
-    const lower = keywordTrim.toLowerCase();
-    return (
-      r.channelCode.toLowerCase().includes(lower) ||
-      r.name.toLowerCase().includes(lower) ||
-      r.department.name.toLowerCase().includes(lower) ||
-      (r.phone ?? "").toLowerCase().includes(lower) ||
-      (r.address ?? "").toLowerCase().includes(lower) ||
-      (r.lingyueCode ?? "").toLowerCase().includes(lower)
-    );
-  });
   const selectedIds = Object.keys(sel).filter((k) => sel[k]);
   const allVisibleSelected =
     canDeleteChannels &&
-    visibleRows.length > 0 &&
-    visibleRows.every((r) => !!sel[r.id]);
+    rows.length > 0 &&
+    rows.every((r) => !!sel[r.id]);
   const someVisibleSelected =
     canDeleteChannels &&
-    visibleRows.some((r) => !!sel[r.id]) &&
+    rows.some((r) => !!sel[r.id]) &&
     !allVisibleSelected;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const canPrev = page > 1;
+  const canNext = page < totalPages;
 
   async function loadDeptsAndInit() {
     const cd = await fetch("/api/departments", {
@@ -81,17 +76,42 @@ export default function ChannelsPage() {
     }
   }
 
-  async function loadChannelsByDept(departmentId: string) {
-    const dept = depts.find((d) => d.id === departmentId);
-    if (!departmentId || dept?.name?.includes("預售")) {
+  async function loadChannels(opts?: { page?: number }) {
+    const k = keyword.trim();
+    const dept = depts.find((d) => d.id === deptQueryId);
+    if (!deptQueryId || dept?.name?.includes("預售") || !k) {
       setRows([]);
+      setTotal(0);
+      setLoadedOnce(false);
+      setSel({});
       return;
     }
-    const qs = new URLSearchParams({ departmentId });
-    const ch = await fetch(`/api/channels?${qs.toString()}`, {
+
+    const p = opts?.page ?? page;
+    const offset = (p - 1) * PAGE_SIZE;
+    const qs = new URLSearchParams({
+      departmentId: deptQueryId,
+      q: k,
+      limit: String(PAGE_SIZE),
+      offset: String(offset),
+      withCount: "1",
+    });
+    const res = await fetch(`/api/channels?${qs.toString()}`, {
       credentials: "include",
-    }).then((r) => r.json());
-    setRows(ch);
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setCreateMsg(typeof j.error === "string" ? j.error : `查詢失敗（${res.status}）`);
+      setRows([]);
+      setTotal(0);
+      setLoadedOnce(true);
+      setSel({});
+      return;
+    }
+    setRows(Array.isArray(j.rows) ? j.rows : []);
+    setTotal(typeof j.total === "number" ? j.total : 0);
+    setLoadedOnce(true);
+    setSel({});
   }
 
   // 僅初次掛載載入；load 內會讀當下 form，不列入依賴避免無限重取
@@ -102,13 +122,6 @@ export default function ChannelsPage() {
     return () => cancelAnimationFrame(id);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- load 刻意不列入；見上
   }, []);
-
-  useEffect(() => {
-    const id = requestAnimationFrame(() => {
-      void loadChannelsByDept(deptQueryId);
-    });
-    return () => cancelAnimationFrame(id);
-  }, [deptQueryId, depts]);
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -140,7 +153,7 @@ export default function ChannelsPage() {
       address: "",
       lingyueCode: "",
     }));
-    void loadChannelsByDept(deptQueryId);
+    if (loadedOnce) void loadChannels({ page: 1 });
   }
 
   async function importExcel(file: File | null) {
@@ -162,7 +175,7 @@ export default function ChannelsPage() {
       }
       if (typeof j.message === "string" && j.message.trim()) {
         setImportMsg(j.message);
-        void loadChannelsByDept(deptQueryId);
+        if (loadedOnce) void loadChannels({ page: 1 });
         return;
       }
       const errTail =
@@ -172,7 +185,7 @@ export default function ChannelsPage() {
       setImportMsg(
         `匯入 ${j.imported ?? 0} 筆（新增 ${j.created ?? 0}／更新 ${j.updated ?? 0}／無變更 ${j.unchanged ?? 0}；略過空列 ${j.skippedEmpty ?? 0}）${errTail}`,
       );
-      void loadChannelsByDept(deptQueryId);
+      if (loadedOnce) void loadChannels({ page: 1 });
     } finally {
       setImporting(false);
     }
@@ -188,7 +201,7 @@ export default function ChannelsPage() {
       body: JSON.stringify({ ids: selectedIds }),
     });
     setSel({});
-    void loadChannelsByDept(deptQueryId);
+    if (loadedOnce) void loadChannels();
   }
 
   return (
@@ -263,6 +276,122 @@ export default function ChannelsPage() {
         </pre>
       )}
 
+      <FilterBar>
+        <Field label="部門">
+          <select
+            className="ui-select"
+            value={deptQueryId}
+            onChange={(e) => {
+              setDeptQueryId(e.target.value);
+              setRows([]);
+              setTotal(0);
+              setLoadedOnce(false);
+              setSel({});
+              setPage(1);
+            }}
+          >
+            {depts.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="關鍵字" className="field-wide">
+          <input
+            className="ui-input"
+            placeholder="代碼 / 名稱 / 電話 / 地址 / 凌越"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                setPage(1);
+                void loadChannels({ page: 1 });
+              }
+            }}
+          />
+        </Field>
+        <div className="toolbar-stretch">
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => {
+              setCreateMsg(null);
+              setPage(1);
+              void loadChannels({ page: 1 });
+            }}
+          >
+            查詢
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => {
+              setCreateMsg(null);
+              setKeyword("");
+              setRows([]);
+              setTotal(0);
+              setLoadedOnce(false);
+              setSel({});
+              setPage(1);
+            }}
+          >
+            清除
+          </button>
+          {canDeleteChannels && (
+            <button
+              type="button"
+              className="btn-destructive"
+              onClick={() => void batchDel()}
+            >
+              批次刪除
+            </button>
+          )}
+        </div>
+      </FilterBar>
+      <p className="text-xs text-muted-foreground -mt-4">
+        {!loadedOnce ? (
+          <>未查詢：請選部門、輸入關鍵字後按「查詢」（避免一次載入整個部門）。</>
+        ) : (
+          <>
+            查到 <strong className="text-foreground">{total}</strong> 筆，目前顯示第{" "}
+            <strong className="text-foreground">{page}</strong> /
+            <strong className="text-foreground"> {totalPages}</strong> 頁（每頁 {PAGE_SIZE}{" "}
+            筆）
+          </>
+        )}
+      </p>
+
+      {loadedOnce && totalPages > 1 && (
+        <div className="toolbar -mt-2">
+          <button
+            type="button"
+            disabled={!canPrev}
+            className="btn-secondary"
+            onClick={() => {
+              const next = Math.max(1, page - 1);
+              setPage(next);
+              void loadChannels({ page: next });
+            }}
+          >
+            上一頁
+          </button>
+          <button
+            type="button"
+            disabled={!canNext}
+            className="btn-secondary"
+            onClick={() => {
+              const next = Math.min(totalPages, page + 1);
+              setPage(next);
+              void loadChannels({ page: next });
+            }}
+          >
+            下一頁
+          </button>
+        </div>
+      )}
+
       <div className="rounded-xl border border-border bg-card text-card-foreground p-4 text-sm space-y-2 max-w-3xl shadow-xs">
         <div className="flex flex-wrap items-center gap-3">
           <span className="font-medium">Excel 匯入（.xlsx）</span>
@@ -300,41 +429,9 @@ export default function ChannelsPage() {
         )}
       </div>
 
-      <div className="flex gap-2">
-        <select
-          className="ui-input"
-          value={deptQueryId}
-          onChange={(e) => {
-            setSel({});
-            setDeptQueryId(e.target.value);
-          }}
-        >
-          {depts.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
-          ))}
-        </select>
-        <input
-          className="ui-input"
-          placeholder="關鍵字查詢（代碼 / 名稱 / 部門 / 電話 / 地址 / 凌越）"
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-        />
-        {canDeleteChannels && (
-          <button
-            type="button"
-            className="text-sm px-3 py-1 rounded-md border border-destructive/30 text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            onClick={() => void batchDel()}
-          >
-            批次刪除
-          </button>
-        )}
-      </div>
-
       {/* Mobile cards */}
       <div className="md:hidden space-y-2">
-        {visibleRows.map((r) => (
+        {rows.map((r) => (
           <div key={r.id} className="rounded-xl border border-border bg-card p-3 shadow-xs space-y-1">
             <div className="flex items-start gap-2">
               {canDeleteChannels && (
@@ -364,7 +461,7 @@ export default function ChannelsPage() {
             </div>
           </div>
         ))}
-        {rows.length === 0 && (
+        {rows.length === 0 && loadedOnce && (
           <p className="text-sm text-muted-foreground py-6 text-center">無資料</p>
         )}
       </div>
@@ -385,7 +482,7 @@ export default function ChannelsPage() {
                       const on = e.target.checked;
                       setSel((s) => {
                         const next = { ...s };
-                        for (const r of visibleRows) {
+                        for (const r of rows) {
                           if (on) next[r.id] = true;
                           else delete next[r.id];
                         }
@@ -405,7 +502,7 @@ export default function ChannelsPage() {
             </tr>
           </thead>
           <tbody>
-            {visibleRows.map((r) => (
+            {rows.map((r) => (
               <tr key={r.id} className="border-t border-border">
                 <td className="p-2">
                   {canDeleteChannels && (

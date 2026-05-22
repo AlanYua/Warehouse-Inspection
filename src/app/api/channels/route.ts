@@ -4,6 +4,7 @@
  */
 
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import {
@@ -11,6 +12,16 @@ import {
   getSessionUser,
 } from "@/lib/api-guard";
 import { writeAudit } from "@/lib/audit";
+
+const listQuerySchema = z.object({
+  departmentId: z.string().min(1),
+  q: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(500).optional(),
+  offset: z.coerce.number().int().min(0).max(100_000).optional(),
+  withCount: z
+    .union([z.literal("1"), z.literal("true"), z.literal("0"), z.literal("false")])
+    .optional(),
+});
 
 export async function GET(req: Request) {
   const u = await getSessionUser();
@@ -21,24 +32,66 @@ export async function GET(req: Request) {
   if (f) return f;
 
   const url = new URL(req.url);
-  const departmentId = (url.searchParams.get("departmentId") ?? "").trim();
+  const parsed = listQuerySchema.safeParse({
+    departmentId: url.searchParams.get("departmentId") ?? undefined,
+    q: url.searchParams.get("q") ?? undefined,
+    limit: url.searchParams.get("limit") ?? undefined,
+    offset: url.searchParams.get("offset") ?? undefined,
+    withCount: url.searchParams.get("withCount") ?? undefined,
+  });
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+  }
 
-  // 防止一次拉全量資料把前端打爆：未指定部門就不查
-  if (!departmentId) return NextResponse.json([]);
+  const departmentId = parsed.data.departmentId.trim();
+  const q = (parsed.data.q ?? "").trim();
+  const take = parsed.data.limit ?? 200;
+  const skip = parsed.data.offset ?? 0;
+  const withCount =
+    parsed.data.withCount === "1" || parsed.data.withCount === "true";
 
   // 預售部門一律不回傳通路資料（避免查詢量爆炸）
   const presaleDept = await prisma.department.findUnique({
     where: { id: departmentId },
     select: { name: true },
   });
-  if (presaleDept?.name?.includes("預售")) return NextResponse.json([]);
+  if (presaleDept?.name?.includes("預售")) {
+    return withCount
+      ? NextResponse.json({ rows: [], total: 0, limit: take, offset: skip })
+      : NextResponse.json([]);
+  }
+
+  // 未帶關鍵字就不查，避免一次拉整個部門
+  if (!q) {
+    return withCount
+      ? NextResponse.json({ rows: [], total: 0, limit: take, offset: skip })
+      : NextResponse.json([]);
+  }
+
+  const where = {
+    isActive: true,
+    departmentId,
+    OR: [
+      { channelCode: { contains: q, mode: "insensitive" as const } },
+      { name: { contains: q, mode: "insensitive" as const } },
+      { phone: { contains: q, mode: "insensitive" as const } },
+      { address: { contains: q, mode: "insensitive" as const } },
+      { lingyueCode: { contains: q, mode: "insensitive" as const } },
+      { department: { name: { contains: q, mode: "insensitive" as const } } },
+    ],
+  } satisfies Prisma.ChannelWhereInput;
 
   const rows = await prisma.channel.findMany({
-    where: { isActive: true, departmentId },
+    where,
     include: { department: true },
     orderBy: { channelCode: "asc" },
+    take,
+    skip,
   });
-  return NextResponse.json(rows);
+  if (!withCount) return NextResponse.json(rows);
+
+  const total = await prisma.channel.count({ where });
+  return NextResponse.json({ rows, total, limit: take, offset: skip });
 }
 
 const createSchema = z.object({
