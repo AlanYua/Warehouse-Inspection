@@ -13,7 +13,12 @@ import {
   Role,
 } from "@prisma/client";
 import { useSession } from "next-auth/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  LOGISTICS_SELF_PICKUP,
+  LOGISTICS_WAREHOUSE_DELIVERY,
+  resolveShipDelivery,
+} from "@/lib/documents/ship-delivery";
 import { BarcodeCamera } from "@/components/BarcodeCamera";
 import { canDeleteDocument } from "@/lib/documents/delete-guard";
 import { can } from "@/lib/permissions";
@@ -36,6 +41,9 @@ export default function DocumentInspect({ id }: { id: string }) {
   const [barcodeBumpQty, setBarcodeBumpQty] = useState("1");
   const [logisticsNo, setLogisticsNo] = useState("");
   const [selfPickup, setSelfPickup] = useState(false);
+  const [warehouseDelivery, setWarehouseDelivery] = useState(false);
+  const [shipping, setShipping] = useState(false);
+  const autoShipLnRef = useRef("");
   const [packageCountA, setPackageCountA] = useState("");
   const [packageCountC, setPackageCountC] = useState("");
   const [packageSize, setPackageSize] = useState("");
@@ -74,9 +82,57 @@ export default function DocumentInspect({ id }: { id: string }) {
 
       // 只有在「已完成」要出貨時才載入揀貨人選項、物流單號
       if (!canShip || doc.status !== DocumentStatus.COMPLETED) return;
-      setLogisticsNo((cur) => cur || doc.logisticsNo || "");
+      const ln = (doc.logisticsNo ?? "").trim();
+      if (ln === LOGISTICS_SELF_PICKUP) {
+        setSelfPickup(true);
+        setWarehouseDelivery(false);
+        setLogisticsNo("");
+      } else if (ln === LOGISTICS_WAREHOUSE_DELIVERY) {
+        setWarehouseDelivery(true);
+        setSelfPickup(false);
+        setLogisticsNo("");
+      } else {
+        setSelfPickup(false);
+        setWarehouseDelivery(false);
+        setLogisticsNo((cur) => cur || ln);
+      }
+      autoShipLnRef.current = "";
     })();
   }, [
+    doc,
+    canShip,
+  ]);
+
+  const noLogisticsInput = selfPickup || warehouseDelivery;
+
+  useEffect(() => {
+    if (!doc || doc.status !== DocumentStatus.COMPLETED || !canShip) return;
+    if (doc.flow !== "OUT") return;
+    if (noLogisticsInput) return;
+    const ln = logisticsNo.trim().replace(/\s+/g, "");
+    if (!ln || ln === autoShipLnRef.current) return;
+    autoShipLnRef.current = ln;
+    const t = setTimeout(() => void ship(), 600);
+    return () => clearTimeout(t);
+  }, [
+    logisticsNo,
+    noLogisticsInput,
+    doc,
+    canShip,
+  ]);
+
+  useEffect(() => {
+    if (!doc || doc.status !== DocumentStatus.COMPLETED || !canShip) return;
+    if (doc.flow !== "OUT") return;
+    if (!selfPickup && !warehouseDelivery) return;
+    const t = setTimeout(() => void ship(), 1200);
+    return () => clearTimeout(t);
+  }, [
+    selfPickup,
+    warehouseDelivery,
+    packageCountA,
+    packageCountC,
+    packageSize,
     doc,
     canShip,
   ]);
@@ -289,10 +345,20 @@ export default function DocumentInspect({ id }: { id: string }) {
     setDoc(await res.json());
   }
 
-  async function ship() {
-    const ln = logisticsNo.trim().replace(/\s+/g, "");
-    if (!selfPickup && !ln) {
-      setErr("請勾選自取或填寫物流單號");
+  async function ship(override?: {
+    selfPickup?: boolean;
+    warehouseDelivery?: boolean;
+    logisticsNo?: string;
+  }) {
+    if (shipping || doc?.status !== DocumentStatus.COMPLETED) return;
+    const ln = (override?.logisticsNo ?? logisticsNo).trim().replace(/\s+/g, "");
+    const delivery = resolveShipDelivery({
+      selfPickup: override?.selfPickup ?? selfPickup,
+      warehouseDelivery: override?.warehouseDelivery ?? warehouseDelivery,
+      logisticsNo: ln,
+    });
+    if (!delivery.ok) {
+      setErr(delivery.error);
       return;
     }
     const a = Number(String(packageCountA).trim());
@@ -305,21 +371,29 @@ export default function DocumentInspect({ id }: { id: string }) {
       setErr("C 件數需為非負整數");
       return;
     }
-    if (!selfPickup && a + c <= 0) {
+    if (!delivery.skipPackageCount && a + c <= 0) {
       setErr("A/C 件數需至少一項大於 0");
       return;
     }
     const ps = packageSize.trim();
+    setShipping(true);
+    setErr(null);
     const res = await fetch(`/api/documents/${id}/ship`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        selfPickup,
-        ...(selfPickup ? {} : { logisticsNo: ln }),
+        selfPickup: delivery.selfPickup,
+        warehouseDelivery: delivery.warehouseDelivery,
+        ...(delivery.skipPackageCount
+          ? {}
+          : { logisticsNo: delivery.logisticsNo }),
+        packageCountA: a,
+        packageCountC: c,
         ...(ps ? { packageSize: ps } : {}),
       }),
     });
+    setShipping(false);
     if (!res.ok) {
       const t = await res.text();
       try {
@@ -594,7 +668,7 @@ export default function DocumentInspect({ id }: { id: string }) {
       )}
       {completed && !shipped && doc.flow === "OUT" && (
         <p className="text-sm text-emerald-900 bg-emerald-50 border border-emerald-200 p-2 rounded">
-          已完成驗收。請填物流單號並按「填寫物流並出貨」；需列印請按單據區塊上的「列印」。
+          已完成驗收。填物流單號或勾選自取／倉庫親送後自動出貨（可取／倉親送時 A/C 選填作紀錄）；需列印請按單據區塊上的「列印」。
         </p>
       )}
       {completed && !shipped && doc.flow === "IN" && !stocked && (
@@ -832,14 +906,20 @@ export default function DocumentInspect({ id }: { id: string }) {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") void ship();
                   }}
-                  placeholder={selfPickup ? "自取（不需填寫）" : "可重複"}
-                  disabled={selfPickup}
+                  placeholder={
+                    noLogisticsInput
+                      ? selfPickup
+                        ? "自取（不需填寫）"
+                        : "倉庫親送（不需填寫）"
+                      : "可重複"
+                  }
+                  disabled={noLogisticsInput}
                 />
                 <button
                   type="button"
                   className="text-sm px-3 py-1 rounded-md border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={() => setCamTarget("logistics")}
-                  disabled={selfPickup}
+                  disabled={noLogisticsInput}
                 >
                   鏡頭掃描
                 </button>
@@ -848,12 +928,38 @@ export default function DocumentInspect({ id }: { id: string }) {
                     type="checkbox"
                     className="accent-primary"
                     checked={selfPickup}
-                    onChange={(e) => setSelfPickup(e.target.checked)}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setSelfPickup(checked);
+                      if (checked) {
+                        setWarehouseDelivery(false);
+                        setLogisticsNo("");
+                        autoShipLnRef.current = "";
+                      }
+                    }}
                   />
                   自取
                 </label>
+                <label className="flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap select-none">
+                  <input
+                    type="checkbox"
+                    className="accent-primary"
+                    checked={warehouseDelivery}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setWarehouseDelivery(checked);
+                      if (checked) {
+                        setSelfPickup(false);
+                        setLogisticsNo("");
+                        autoShipLnRef.current = "";
+                      }
+                    }}
+                  />
+                  倉庫親送
+                </label>
                 <span className="text-xs text-muted-foreground whitespace-nowrap">
                   箱數 A {Number(packageCountA) || 0} / C {Number(packageCountC) || 0}
+                  {noLogisticsInput ? "（選填紀錄）" : ""}
                 </span>
                 <label className="text-xs text-muted-foreground whitespace-nowrap">
                   A（小件）
@@ -863,7 +969,6 @@ export default function DocumentInspect({ id }: { id: string }) {
                   value={packageCountA}
                   inputMode="numeric"
                   onChange={(e) => setPackageCountA(e.target.value)}
-                  disabled
                 />
                 <label className="text-xs text-muted-foreground whitespace-nowrap">
                   C（大件）
@@ -873,7 +978,6 @@ export default function DocumentInspect({ id }: { id: string }) {
                   value={packageCountC}
                   inputMode="numeric"
                   onChange={(e) => setPackageCountC(e.target.value)}
-                  disabled
                 />
                 <label className="text-xs text-muted-foreground whitespace-nowrap">
                   備註（選填）
@@ -886,10 +990,11 @@ export default function DocumentInspect({ id }: { id: string }) {
                 />
                 <button
                   type="button"
-                  className="text-sm px-3 py-1 rounded-md bg-primary text-primary-foreground shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="text-sm px-3 py-1 rounded-md bg-primary text-primary-foreground shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                   onClick={() => void ship()}
+                  disabled={shipping}
                 >
-                  填寫物流並出貨
+                  {shipping ? "出貨中…" : "出貨"}
                 </button>
               </div>
             )}
@@ -942,10 +1047,12 @@ export default function DocumentInspect({ id }: { id: string }) {
               {doc.flow === "OUT" && (
                 <>
                   {doc.logisticsNo?.trim()
-                    ? `物流單號 ${doc.logisticsNo.trim()}`
-                    : shipped
+                    ? doc.logisticsNo.trim() === LOGISTICS_SELF_PICKUP
                       ? "自取"
-                      : "物流單號 —"}
+                      : doc.logisticsNo.trim() === LOGISTICS_WAREHOUSE_DELIVERY
+                        ? "倉庫親送"
+                        : `物流單號 ${doc.logisticsNo.trim()}`
+                    : "物流單號 —"}
                   {" ／ "}
                 </>
               )}
@@ -1061,7 +1168,10 @@ export default function DocumentInspect({ id }: { id: string }) {
           onDecoded={(t) => {
             const decoded = t.trim().replace(/\s+/g, "");
             if (camTarget === "logistics") {
+              setSelfPickup(false);
+              setWarehouseDelivery(false);
               setLogisticsNo(decoded);
+              autoShipLnRef.current = "";
               setErr(null);
               return;
             }

@@ -11,6 +11,7 @@ import {
   getSessionUser,
 } from "@/lib/api-guard";
 import { parseDashboardDateRangeQuery } from "@/lib/dashboard-date-range";
+import { SELF_DELIVERY_LOGISTICS_NOS } from "@/lib/documents/ship-delivery";
 
 type DashboardShippedByUserRow = {
   userId: string;
@@ -388,6 +389,12 @@ export async function GET(req: Request) {
   // details=0：先回傳「空的明細區塊」避免前端掛掉
   let returnPieces = 0;
   let logisticsPackages = 0;
+  let selfDeliveryPackages = 0;
+  let selfDeliveryByDepartment = deptIdsOrdered.map((deptId) => ({
+    departmentId: deptId,
+    name: deptMap[deptId] ?? "—",
+    packages: 0,
+  }));
   let logisticsByDeptPackageSize = {
     rows: [
       { key: "A" as const, label: "A（小件）" },
@@ -433,7 +440,21 @@ export async function GET(req: Request) {
   let userById: Record<string, { id: string; username: string; name: string | null }> = {};
   if (details) {
     // 物流/退貨 totals
-    const [returnPiecesAgg, logisticsPackagesAgg] = await Promise.all([
+    const shippedPackageWhere = {
+      ...dateFilter,
+      status: DocumentStatus.SHIPPED,
+      packageCount: { not: null },
+    } as const;
+    const selfDeliveryLogisticsWhere = {
+      logisticsNo: { in: [...SELF_DELIVERY_LOGISTICS_NOS] },
+    } as const;
+
+    const [
+      returnPiecesAgg,
+      carrierLogisticsAgg,
+      selfDeliveryAgg,
+      selfDeliveryDeptRows,
+    ] = await Promise.all([
       prisma.returnShipment.aggregate({
         where: {
           createdAt: { gte: rangeStart, lte: rangeEnd },
@@ -442,15 +463,46 @@ export async function GET(req: Request) {
       }),
       prisma.inspectionDoc.aggregate({
         where: {
+          ...shippedPackageWhere,
+          NOT: selfDeliveryLogisticsWhere,
+        },
+        _sum: { packageCount: true },
+      }),
+      prisma.inspectionDoc.aggregate({
+        where: {
+          ...shippedPackageWhere,
+          ...selfDeliveryLogisticsWhere,
+        },
+        _sum: { packageCount: true },
+      }),
+      prisma.inspectionDoc.groupBy({
+        by: ["departmentId"],
+        where: {
           ...dateFilter,
+          flow: DocumentFlow.OUT,
           status: DocumentStatus.SHIPPED,
           packageCount: { not: null },
+          ...selfDeliveryLogisticsWhere,
         },
         _sum: { packageCount: true },
       }),
     ]);
     returnPieces = returnPiecesAgg._sum.pieceCount ?? 0;
-    logisticsPackages = logisticsPackagesAgg._sum.packageCount ?? 0;
+    selfDeliveryPackages = selfDeliveryAgg._sum.packageCount ?? 0;
+    const carrierLogisticsPackages = carrierLogisticsAgg._sum.packageCount ?? 0;
+    logisticsPackages = carrierLogisticsPackages + selfDeliveryPackages;
+
+    const selfDeliveryByDeptMap = Object.fromEntries(
+      selfDeliveryDeptRows.map((r) => [
+        r.departmentId,
+        r._sum.packageCount ?? 0,
+      ]),
+    );
+    selfDeliveryByDepartment = deptIdsOrdered.map((deptId) => ({
+      departmentId: deptId,
+      name: deptMap[deptId] ?? "—",
+      packages: selfDeliveryByDeptMap[deptId] ?? 0,
+    }));
 
     // 物流 A/C 依部門與 flow（用 groupBy，成本遠低於抓明細）
     const [deptPackageACRows, deptPackageACOutRows, deptPackageACInRows] =
@@ -460,6 +512,7 @@ export async function GET(req: Request) {
           where: {
             ...dateFilter,
             status: DocumentStatus.SHIPPED,
+            NOT: selfDeliveryLogisticsWhere,
             OR: [{ packageCountA: { not: null } }, { packageCountC: { not: null } }],
           },
           _sum: { packageCountA: true, packageCountC: true },
@@ -470,6 +523,7 @@ export async function GET(req: Request) {
             ...dateFilter,
             flow: DocumentFlow.OUT,
             status: DocumentStatus.SHIPPED,
+            NOT: selfDeliveryLogisticsWhere,
             OR: [{ packageCountA: { not: null } }, { packageCountC: { not: null } }],
           },
           _sum: { packageCountA: true, packageCountC: true },
@@ -532,6 +586,7 @@ export async function GET(req: Request) {
       where: {
         ...dateFilter,
         status: DocumentStatus.SHIPPED,
+        NOT: selfDeliveryLogisticsWhere,
         packageCount: { not: null },
         packageCountA: null,
         packageCountC: null,
@@ -788,6 +843,7 @@ export async function GET(req: Request) {
       completed,
       shipped,
       logisticsPackages,
+      selfDeliveryPackages,
       returnPieces,
     },
     totalsByFlow: {
@@ -815,6 +871,7 @@ export async function GET(req: Request) {
         ...byDeptFlow[id]?.IN,
       })),
     },
+    selfDeliveryByDepartment,
     logisticsByDeptPackageSize,
     logisticsByDeptPackageSizeByFlow,
     shippedByUser,

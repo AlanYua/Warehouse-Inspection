@@ -4,7 +4,10 @@ export type Dash = {
     inspecting: number;
     completed: number;
     shipped: number;
+    /** 物流件數（含自送） */
     logisticsPackages: number;
+    /** 自送件數（自取 + 倉庫親送） */
+    selfDeliveryPackages: number;
     returnPieces: number;
   };
   totalsByFlow: {
@@ -39,6 +42,11 @@ export type Dash = {
       stocked: number;
     }>;
   };
+  selfDeliveryByDepartment: Array<{
+    departmentId: string;
+    name: string;
+    packages: number;
+  }>;
   logisticsByDeptPackageSize: {
     rows: Array<{ key: "A" | "C"; label: string }>;
     byDepartment: Array<{

@@ -145,6 +145,8 @@ export default function DashboardClient() {
   const outCTotal = outCByDept.reduce((a, b) => a + b, 0);
   const inATotal = inAByDept.reduce((a, b) => a + b, 0);
   const inCTotal = inCByDept.reduce((a, b) => a + b, 0);
+  const selfDeliveryByDept = d.selfDeliveryByDepartment.map((x) => x.packages);
+  const selfDeliveryTotal = selfDeliveryByDept.reduce((a, b) => a + b, 0);
 
   return (
     <div className="space-y-6">
@@ -380,8 +382,9 @@ export default function DashboardClient() {
               物流 / 退貨 / 品牌 / 人員
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:max-w-md sm:shrink-0 sm:justify-end">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full sm:w-auto sm:max-w-lg sm:shrink-0 sm:justify-end">
             <Stat label="物流件數" value={d.totals.logisticsPackages} />
+            <Stat label="自送件數" value={d.totals.selfDeliveryPackages} />
             <Stat label="退貨件數" value={d.totals.returnPieces} />
           </div>
         </summary>
@@ -437,6 +440,20 @@ export default function DashboardClient() {
                   {outCTotal}
                 </td>
               </tr>
+              <tr className="border-t border-border bg-muted/30">
+                <td className="p-2 whitespace-nowrap">自送件數</td>
+                {selfDeliveryByDept.map((v, i) => (
+                  <td
+                    key={d.byDepartment[i]?.id ?? i}
+                    className="p-2 text-right tabular-nums"
+                  >
+                    {v > 0 ? v : "—"}
+                  </td>
+                ))}
+                <td className="p-2 text-right tabular-nums font-medium">
+                  {selfDeliveryTotal > 0 ? selfDeliveryTotal : "—"}
+                </td>
+              </tr>
               <tr className="border-t border-border">
                 <td className="p-2 whitespace-nowrap">進貨/退貨 A（小件）</td>
                 {inAByDept.map((v, i) => (
@@ -474,7 +491,8 @@ export default function DashboardClient() {
                   const outC = pkgOutByDeptMap.get(deptId)?.C ?? 0;
                   const inA = pkgInByDeptMap.get(deptId)?.A ?? 0;
                   const inC = pkgInByDeptMap.get(deptId)?.C ?? 0;
-                  const sum = outA + outC + inA + inC;
+                  const selfDel = selfDeliveryByDept[i] ?? 0;
+                  const sum = outA + outC + inA + inC + selfDel;
                   return (
                     <td
                       key={d.byDepartment[i]?.id ?? i}
@@ -485,7 +503,7 @@ export default function DashboardClient() {
                   );
                 })}
                 <td className="p-2 text-right tabular-nums">
-                  {outATotal + outCTotal + inATotal + inCTotal}
+                  {outATotal + outCTotal + inATotal + inCTotal + selfDeliveryTotal}
                 </td>
               </tr>
             </tfoot>
