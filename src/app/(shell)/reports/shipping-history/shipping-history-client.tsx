@@ -1,5 +1,6 @@
 "use client";
 
+import { Field, FilterBar } from "@/components/ui/page-shell";
 import { useEffect, useRef, useState } from "react";
 import { flowZh } from "@/app/(shell)/documents/[id]/inspect-types";
 
@@ -42,8 +43,6 @@ type ProductOption = {
   barcode: string | null;
   brand: string | null;
 };
-
-const inputCls = "ui-input";
 
 function fmtDate(iso: string) {
   const d = new Date(iso);
@@ -235,17 +234,10 @@ export default function ShippingHistoryClient() {
       <p className="page-desc -mt-2">
         僅供查詢檢視，無法編輯。僅含已出貨／已入庫單據；入庫為正（+）、出貨為負（-）
       </p>
-        <form
-          className="filter-bar"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void search();
-          }}
-        >
-          <div>
-            <label className="block text-xs text-muted-foreground">品牌</label>
+        <FilterBar>
+          <Field label="品牌">
             <select
-              className={`${inputCls} w-40`}
+              className="ui-select"
               value={brand}
               onChange={(e) => onBrandChange(e.target.value)}
               disabled={!activeBrands.length}
@@ -257,55 +249,53 @@ export default function ShippingHistoryClient() {
                 </option>
               ))}
             </select>
-          </div>
-          <div className="relative" ref={pickerRef}>
-            <label className="block text-xs text-muted-foreground">
-              品項（貨號／條碼／名稱）
-            </label>
-            <input
-              type="text"
-              className={`${inputCls} w-72`}
-              placeholder={brand ? "輸入關鍵字搜尋品項" : "請先選品牌"}
-              value={keyword}
-              onChange={(e) => onKeywordChange(e.target.value)}
-              onFocus={() => {
-                if (productOptions.length) setPickerOpen(true);
-              }}
-              disabled={!brand}
-            />
-            {brand && keyword.trim() && pickerOpen ? (
-              <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-md border border-border bg-popover text-popover-foreground shadow-md text-sm">
-                {optionsLoading ? (
-                  <li className="px-3 py-2 text-muted-foreground">搜尋中…</li>
-                ) : productOptions.length === 0 ? (
-                  <li className="px-3 py-2 text-muted-foreground">無符合品項</li>
-                ) : (
-                  productOptions.map((p) => (
-                    <li key={p.productCode}>
-                      <button
-                        type="button"
-                        className="w-full text-left px-3 py-2 hover:bg-muted"
-                        onClick={() => pickProduct(p)}
-                      >
-                        <span className="font-mono font-medium">{p.productCode}</span>
-                        <span className="mx-1 text-muted-foreground">·</span>
-                        <span>{p.name}</span>
-                        {p.barcode ? (
-                          <span className="block text-xs text-muted-foreground font-mono mt-0.5">
-                            {p.barcode}
-                          </span>
-                        ) : null}
-                      </button>
-                    </li>
-                  ))
-                )}
-              </ul>
-            ) : null}
-          </div>
-          <div>
-            <label className="block text-xs text-muted-foreground">部門</label>
+          </Field>
+          <Field label="品項（貨號／條碼／名稱）" className="field-wide relative" >
+            <div className="relative min-w-0" ref={pickerRef}>
+              <input
+                type="text"
+                className="ui-input"
+                placeholder={brand ? "輸入關鍵字搜尋品項" : "請先選品牌"}
+                value={keyword}
+                onChange={(e) => onKeywordChange(e.target.value)}
+                onFocus={() => {
+                  if (productOptions.length) setPickerOpen(true);
+                }}
+                disabled={!brand}
+              />
+              {brand && keyword.trim() && pickerOpen ? (
+                <ul className="absolute z-20 mt-1 max-h-56 w-full min-w-0 overflow-auto rounded-md border border-border bg-popover text-popover-foreground shadow-md text-sm">
+                  {optionsLoading ? (
+                    <li className="px-3 py-2 text-muted-foreground">搜尋中…</li>
+                  ) : productOptions.length === 0 ? (
+                    <li className="px-3 py-2 text-muted-foreground">無符合品項</li>
+                  ) : (
+                    productOptions.map((p) => (
+                      <li key={p.productCode}>
+                        <button
+                          type="button"
+                          className="w-full text-left px-3 py-2 hover:bg-muted"
+                          onClick={() => pickProduct(p)}
+                        >
+                          <span className="font-mono font-medium">{p.productCode}</span>
+                          <span className="mx-1 text-muted-foreground">·</span>
+                          <span>{p.name}</span>
+                          {p.barcode ? (
+                            <span className="block text-xs text-muted-foreground font-mono mt-0.5">
+                              {p.barcode}
+                            </span>
+                          ) : null}
+                        </button>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              ) : null}
+            </div>
+          </Field>
+          <Field label="部門">
             <select
-              className={`${inputCls} w-36`}
+              className="ui-select"
               value={departmentId}
               onChange={(e) => setDepartmentId(e.target.value)}
             >
@@ -316,29 +306,26 @@ export default function ShippingHistoryClient() {
                 </option>
               ))}
             </select>
-          </div>
-          <div>
-            <label className="block text-xs text-muted-foreground">起日</label>
+          </Field>
+          <Field label="起日">
             <input
               type="date"
-              className={inputCls}
+              className="ui-input"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
             />
-          </div>
-          <div>
-            <label className="block text-xs text-muted-foreground">迄日</label>
+          </Field>
+          <Field label="迄日">
             <input
               type="date"
-              className={inputCls}
+              className="ui-input"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
             />
-          </div>
-          <div>
-            <label className="block text-xs text-muted-foreground">方向</label>
+          </Field>
+          <Field label="方向">
             <select
-              className={inputCls}
+              className="ui-select"
               value={flow}
               onChange={(e) => setFlow(e.target.value as "" | "OUT" | "IN")}
             >
@@ -346,15 +333,18 @@ export default function ShippingHistoryClient() {
               <option value="OUT">驗出</option>
               <option value="IN">驗入</option>
             </select>
+          </Field>
+          <div className="toolbar-stretch">
+            <button
+              type="button"
+              disabled={loading || !selectedProduct}
+              className="btn-primary"
+              onClick={() => void search()}
+            >
+              {loading ? "查詢中…" : "查詢"}
+            </button>
           </div>
-          <button
-            type="submit"
-            disabled={loading || !selectedProduct}
-            className="btn-primary"
-          >
-            {loading ? "查詢中…" : "查詢"}
-          </button>
-        </form>
+        </FilterBar>
         {selectedProduct ? (
           <p className="text-xs text-muted-foreground">
             已選：

@@ -56,6 +56,7 @@ export default function ProductsPage() {
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [storageMsg, setStorageMsg] = useState<string | null>(null);
+  const [brandsLoaded, setBrandsLoaded] = useState(false);
 
   const activeBrandNames = brands.filter((b) => b.isActive).map((b) => b.name);
   const selectedProductIds = Object.keys(sel).filter((k) => sel[k]);
@@ -69,6 +70,7 @@ export default function ProductsPage() {
       r.ok ? r.json() : [],
     );
     setBrands(br);
+    setBrandsLoaded(true);
   }
 
   async function loadProducts(opts?: { page?: number }) {
@@ -127,7 +129,19 @@ export default function ProductsPage() {
     e.preventDefault();
     setCreateMsg(null);
     if (!brands.length) {
-      setCreateMsg("尚未設定品牌；請先到 /settings 建立品牌。");
+      setCreateMsg("尚未設定品牌；請先到設定頁建立品牌。");
+      return;
+    }
+    if (!form.productCode.trim()) {
+      setCreateMsg("請輸入貨品編號");
+      return;
+    }
+    if (!form.name.trim()) {
+      setCreateMsg("請輸入商品名稱");
+      return;
+    }
+    if (!form.brand.trim()) {
+      setCreateMsg("請選擇品牌");
       return;
     }
     const res = await fetch("/api/products", {
@@ -200,7 +214,7 @@ export default function ProductsPage() {
   function openBatchStorage() {
     setStorageMsg(null);
     if (!selectedProductIds.length) {
-      setStorageMsg("請先勾選商品再批次設定儲位。");
+      setStorageMsg("請先勾選商品，再按「批次設定儲位」。");
       return;
     }
     setBatchStorageValue("");
@@ -269,82 +283,81 @@ export default function ProductsPage() {
       <header className="page-header">
         <h1 className="page-title">商品主檔</h1>
       </header>
-      <form
-        onSubmit={create}
-        className="panel panel-body grid grid-cols-1 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-5"
-      >
+      <div className="panel panel-body space-y-3">
+        <h2 className="text-sm font-medium text-foreground">新增商品</h2>
         {createMsg && (
-          <div className="md:col-span-5">
-            <p
-              className={`text-sm ${createMsg.includes("失敗") ? "text-destructive" : "text-muted-foreground"}`}
-            >
-              {createMsg}
-            </p>
-          </div>
+          <p
+            className={`text-sm ${createMsg.includes("失敗") || createMsg.startsWith("請") ? "text-destructive" : "text-muted-foreground"}`}
+          >
+            {createMsg}
+          </p>
         )}
-        <input
-          className="ui-input"
-          placeholder="貨品編號"
-          value={form.productCode}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, productCode: e.target.value }))
-          }
-          required
-        />
-        <input
-          className="ui-input md:col-span-2"
-          placeholder="商品名稱"
-          value={form.name}
-          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-          required
-        />
-        <select
-          className="ui-input"
-          value={form.brand}
-          onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
-          required
-          disabled={!brands.length}
+        <form
+          noValidate
+          onSubmit={create}
+          className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
         >
-          <option value="" disabled>
-            選擇品牌
-          </option>
-          {brands.map((b) => (
-            <option key={b.id} value={b.name}>
-              {b.name}
-            </option>
-          ))}
-        </select>
-        <input
-          className="ui-input"
-          placeholder="國際條碼"
-          value={form.barcode}
-          onChange={(e) => setForm((f) => ({ ...f, barcode: e.target.value }))}
-        />
-        <input
-          className="ui-input"
-          placeholder="儲位"
-          value={form.storageLocation}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, storageLocation: e.target.value }))
-          }
-        />
-        <button
-          type="submit"
-          disabled={!brands.length}
-          className="btn-primary md:col-span-2 lg:col-span-4 disabled:cursor-not-allowed"
-        >
-          新增商品
-        </button>
-      </form>
+          <input
+            className="ui-input"
+            placeholder="貨品編號"
+            value={form.productCode}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, productCode: e.target.value }))
+            }
+          />
+          <input
+            className="ui-input sm:col-span-2 xl:col-span-2"
+            placeholder="商品名稱"
+            value={form.name}
+            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+          />
+          <select
+            className="ui-select"
+            value={form.brand}
+            onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
+            disabled={!brands.length}
+          >
+            <option value="">選擇品牌</option>
+            {brands.map((b) => (
+              <option key={b.id} value={b.name}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+          <input
+            className="ui-input"
+            placeholder="國際條碼"
+            value={form.barcode}
+            onChange={(e) => setForm((f) => ({ ...f, barcode: e.target.value }))}
+          />
+          <input
+            className="ui-input"
+            placeholder="儲位"
+            value={form.storageLocation}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, storageLocation: e.target.value }))
+            }
+          />
+          <div className="sm:col-span-2 xl:col-span-6">
+            <button
+              type="submit"
+              disabled={!brands.length}
+              className="btn-primary w-full sm:w-auto disabled:cursor-not-allowed"
+            >
+              新增商品
+            </button>
+          </div>
+        </form>
+      </div>
 
-      {!brands.length && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 text-amber-900 p-3 text-sm max-w-3xl">
+      {brandsLoaded && !brands.length && (
+        <p className="alert-warn max-w-3xl">
           尚未設定品牌，商品新增/匯入會被擋下。請先到{" "}
-          <Link className="underline" href="/settings">
-            /settings
+          <Link className="underline font-medium" href="/settings">
+            設定
           </Link>{" "}
           建立品牌。
-        </div>
+        </p>
       )}
 
       <div className="rounded-xl border border-border bg-card text-card-foreground p-4 text-sm space-y-2 max-w-3xl shadow-xs">
