@@ -6,6 +6,13 @@
 "use client";
 
 import Link from "next/link";
+import {
+  Field,
+  FilterBar,
+  ListCard,
+  MobileList,
+  TableShell,
+} from "@/components/ui/page-shell";
 import { useEffect, useState } from "react";
 import { DocumentStatus, Role } from "@prisma/client";
 import { canDeleteDocument } from "@/lib/documents/delete-guard";
@@ -222,11 +229,10 @@ export default function DocumentsList({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-3 items-end">
-        <div>
-          <label className="text-xs text-muted-foreground">狀態</label>
+      <FilterBar>
+        <Field label="狀態">
           <select
-            className="block rounded-md border border-input bg-background px-2 py-1.5 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="ui-select"
             value={status}
             onChange={(e) => setStatus(e.target.value)}
           >
@@ -237,11 +243,10 @@ export default function DocumentsList({
             <option value="SHIPPED">已出貨</option>
             <option value="STOCKED">已入庫</option>
           </select>
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground">部門</label>
+        </Field>
+        <Field label="部門">
           <select
-            className="mt-0.5 block min-w-[10rem] rounded-md border border-input bg-background px-2 py-1.5 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="ui-select"
             value={deptId}
             onChange={(e) => setDeptId(e.target.value)}
           >
@@ -252,11 +257,10 @@ export default function DocumentsList({
               </option>
             ))}
           </select>
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground">單據類型</label>
+        </Field>
+        <Field label="單據類型">
           <select
-            className="mt-0.5 block min-w-[10rem] rounded-md border border-input bg-background px-2 py-1.5 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="ui-select"
             value={docType}
             onChange={(e) => setDocType(e.target.value)}
           >
@@ -267,85 +271,71 @@ export default function DocumentsList({
               </option>
             ))}
           </select>
-        </div>
-        <div>
-          <label
-            className="text-xs text-muted-foreground whitespace-nowrap"
-            title="有單據日期者依單據日期；無則依匯入／建立日"
-          >
-            單據日期起
-          </label>
+        </Field>
+        <Field label="單據日期起">
           <input
             type="date"
             title="有單據日期者依單據日期；無則依匯入／建立日"
-            className="mt-0.5 block rounded-md border border-input bg-background px-2 py-1.5 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="ui-input"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
           />
-        </div>
-        <div>
-          <label
-            className="text-xs text-muted-foreground whitespace-nowrap"
-            title="有單據日期者依單據日期；無則依匯入／建立日"
-          >
-            單據日期迄
-          </label>
+        </Field>
+        <Field label="單據日期迄">
           <input
             type="date"
             title="有單據日期者依單據日期；無則依匯入／建立日"
-            className="mt-0.5 block rounded-md border border-input bg-background px-2 py-1.5 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="ui-input"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
           />
-        </div>
-        <div className="flex-1 min-w-[160px]">
-          <label className="text-xs text-muted-foreground">關鍵字</label>
+        </Field>
+        <Field label="關鍵字" className="field-wide">
           <input
-            className="block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="ui-input"
             placeholder="至少 3 個字"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && void fetchList()}
           />
           {q.length > 0 && q.length < 3 && (
-            <p className="text-xs text-amber-500 mt-0.5">需至少 3 個字才會搜尋</p>
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+              需至少 3 個字才會搜尋
+            </p>
           )}
-        </div>
-        <button
-          type="button"
-          className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          onClick={() => void fetchList()}
-        >
-          查詢
-        </button>
-        <button
-          type="button"
-          disabled={exporting}
-          className="text-sm px-3 py-1.5 rounded-md border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
-          onClick={() => void exportSelectedExcel()}
-        >
-          {exporting ? "匯出中…" : "Excel 匯出選取"}
-        </button>
-        <Link
-          href={`/print/documents?ids=${selectedIds.join(",")}`}
-          className="text-sm px-3 py-1.5 rounded-md border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          批次列印選取
-        </Link>
-        {canDelete && (
+        </Field>
+        <div className="toolbar-stretch">
+          <button type="button" className="btn-primary" onClick={() => void fetchList()}>
+            查詢
+          </button>
           <button
             type="button"
-            disabled={batchDeleting}
-            className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
-            onClick={() => void batchDeleteSelected()}
+            disabled={exporting}
+            className="btn-secondary"
+            onClick={() => void exportSelectedExcel()}
           >
-            {batchDeleting ? "刪除中…" : "批次刪除選取"}
+            {exporting ? "匯出中…" : "Excel 匯出"}
           </button>
-        )}
-      </div>
+          <Link
+            href={`/print/documents?ids=${selectedIds.join(",")}`}
+            className="btn-secondary"
+          >
+            批次列印
+          </Link>
+          {canDelete && (
+            <button
+              type="button"
+              disabled={batchDeleting}
+              className="btn-destructive"
+              onClick={() => void batchDeleteSelected()}
+            >
+              {batchDeleting ? "刪除中…" : "批次刪除"}
+            </button>
+          )}
+        </div>
+      </FilterBar>
 
-      {/* ── Mobile: card layout ── */}
-      <div className="md:hidden space-y-2">
+      <MobileList>
         {visibleRows.map((r) => {
           const actionLabel =
             r.status === "SHIPPED" || r.status === "COMPLETED"
@@ -354,10 +344,7 @@ export default function DocumentsList({
                 ? "進入"
                 : "驗收";
           return (
-            <div
-              key={r.id}
-              className="rounded-xl border border-border bg-card p-3 shadow-xs space-y-1.5"
-            >
+            <ListCard key={r.id}>
               <div className="flex items-start gap-2">
                 <input
                   type="checkbox"
@@ -376,13 +363,13 @@ export default function DocumentsList({
                       {r.documentNumber}
                     </Link>
                     <span
-                      className={`shrink-0 text-xs px-1.5 py-0.5 rounded-full font-medium ${
+                      className={
                         r.status === "COMPLETED" || r.status === "SHIPPED"
-                          ? "bg-green-100 text-green-800"
+                          ? "badge-done"
                           : r.status === "INSPECTING"
-                            ? "bg-amber-100 text-amber-800"
-                            : "bg-gray-100 text-gray-600"
-                      }`}
+                            ? "badge-active"
+                            : "badge-pending"
+                      }
                     >
                       {statusLabel(r)}
                     </span>
@@ -437,7 +424,7 @@ export default function DocumentsList({
                   )}
                 </div>
               </div>
-            </div>
+            </ListCard>
           );
         })}
         {rows.length === 0 && (
@@ -445,12 +432,11 @@ export default function DocumentsList({
             無符合條件的單據
           </p>
         )}
-      </div>
+      </MobileList>
 
-      {/* ── Desktop: table layout ── */}
-      <div className="hidden md:block overflow-x-auto rounded-xl border border-border bg-card shadow-xs">
-        <table className="min-w-full text-sm">
-          <thead className="bg-muted text-left text-muted-foreground">
+      <TableShell>
+        <table className="data-table">
+          <thead>
             <tr>
               <th className="p-2 w-8">
                 <input
@@ -574,7 +560,7 @@ export default function DocumentsList({
             ))}
           </tbody>
         </table>
-      </div>
+      </TableShell>
     </div>
   );
 }

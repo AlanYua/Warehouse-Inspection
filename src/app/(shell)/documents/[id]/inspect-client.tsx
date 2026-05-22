@@ -506,13 +506,8 @@ export default function DocumentInspect({ id }: { id: string }) {
     if (err) {
       return (
         <div className="space-y-4">
-          <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 p-2 rounded-md">
-            {err}
-          </p>
-          <Link
-            href="/documents"
-            className="text-primary text-sm underline-offset-4 hover:underline"
-          >
+          <p className="alert-error">{err}</p>
+          <Link href="/documents" className="btn-secondary">
             返回列表
           </Link>
         </div>
@@ -646,37 +641,31 @@ export default function DocumentInspect({ id }: { id: string }) {
   return (
     <div className="space-y-4">
       {shipped && (
-        <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 p-2 rounded">
-          已出貨，僅供檢視。
-        </p>
+        <p className="alert-warn">已出貨，僅供檢視。</p>
       )}
       {completed && !shipped && doc.flow === "OUT" && (
-        <p className="text-sm text-emerald-900 bg-emerald-50 border border-emerald-200 p-2 rounded">
+        <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-900 dark:text-emerald-200">
           已完成驗收。填寫物流單號後自動出貨；自取／倉庫親送請勾選後按「出貨」（A/C 選填作紀錄）；需列印請按單據區塊上的「列印」。
         </p>
       )}
       {completed && !shipped && doc.flow === "IN" && !stocked && (
-        <p className="text-sm text-emerald-900 bg-emerald-50 border border-emerald-200 p-2 rounded">
-          已完成驗收。倉庫主管請勾選「已完成上架」標記入庫。
+        <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-900 dark:text-emerald-200">
+          已完成驗收。倉庫主管請按「已完成上架」標記入庫。
         </p>
       )}
       {stocked && (
-        <p className="text-sm text-emerald-950 bg-emerald-50 border border-emerald-200 p-2 rounded">
+        <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-900 dark:text-emerald-200">
           已入庫{doc.stockedBy?.name ? `（${doc.stockedBy.name}）` : ""}。
         </p>
       )}
       {!shipped && !completed && qtyInvalid && (
-        <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 p-2 rounded-md">
+        <p className="alert-error">
           有品項「驗收量」大於「單據量」，請先修正後才能完成單據。
         </p>
       )}
-      {err && (
-        <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 p-2 rounded-md">
-          {err}
-        </p>
-      )}
+      {err && <p className="alert-error">{err}</p>}
       {salesCannotInspectIn && !shipped && !completed && (
-        <p className="text-sm text-muted-foreground bg-muted/50 border border-border p-2 rounded-md">
+        <p className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
           業務帳號僅可處理驗出揀貨，無法執行驗入檢驗。
         </p>
       )}
@@ -685,9 +674,9 @@ export default function DocumentInspect({ id }: { id: string }) {
         inspectingUnlocked &&
         !shipped &&
         !completed && (
-        <div className="text-sm bg-sky-50 text-sky-950 border border-sky-200 p-3 rounded-md space-y-2">
+        <div className="inspect-claim-panel">
           <p className="font-medium">此單據已交棒、目前無人鎖定</p>
-          <p className="text-xs text-sky-900/90">
+          <p className="text-xs opacity-90">
             {doc.flow === "IN"
               ? "檢驗者接鎖後可手改驗收量（手動核對）或掃條碼累加（條碼核對）。同時間僅一人能鎖定。"
               : "揀貨者可回來勾選「揀過」；驗收者接鎖後可手改驗收量（手動核對）或掃條碼累加（條碼核對）。同時間僅一人能鎖定。"}
@@ -695,15 +684,15 @@ export default function DocumentInspect({ id }: { id: string }) {
           {doc.inspector &&
             selfId &&
             doc.inspector.id !== selfId && (
-              <p className="text-xs text-amber-800">
+              <p className="text-xs text-amber-800 dark:text-amber-300">
                 已登記驗收者為「{doc.inspector.name}」，須由其本人接鎖。
               </p>
             )}
-          <div className="flex flex-wrap gap-2 pt-1">
+          <div className="toolbar pt-1">
             {canClaimPickerContinue && (
               <button
                 type="button"
-                className="text-sm px-3 py-1.5 rounded-md border border-sky-300 bg-background shadow-sm hover:bg-sky-100"
+                className="btn-info-outline"
                 onClick={() => void startInspectAs("PICKER")}
               >
                 我以揀貨者繼續
@@ -712,7 +701,7 @@ export default function DocumentInspect({ id }: { id: string }) {
             {canClaimInspectorNew || canClaimInspectorInIn ? (
               <button
                 type="button"
-                className="text-sm px-3 py-1.5 rounded-md bg-sky-700 text-white shadow-sm hover:bg-sky-800"
+                className="btn-info"
                 onClick={() => void startInspectAs("INSPECTOR")}
               >
                 {canClaimInspectorInIn ? "我以檢驗者接鎖" : "我以驗收者接續"}
@@ -721,7 +710,7 @@ export default function DocumentInspect({ id }: { id: string }) {
             {canClaimInspectorResume && (
               <button
                 type="button"
-                className="text-sm px-3 py-1.5 rounded-md bg-sky-700 text-white shadow-sm hover:bg-sky-800"
+                className="btn-info"
                 onClick={() => void startInspectAs("INSPECTOR")}
               >
                 接鎖繼續驗收
@@ -730,48 +719,45 @@ export default function DocumentInspect({ id }: { id: string }) {
           </div>
         </div>
       )}
-      <div className="rounded-xl border border-border bg-card text-card-foreground p-4 text-sm space-y-1 shadow-xs">
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-between sm:items-start">
-          <div className="min-w-0">
-            <div className="font-mono text-lg break-all">{doc.documentNumber}</div>
+      <div className="panel panel-body text-sm space-y-3">
+        <div className="inspect-toolbar">
+          <div className="min-w-0 shrink-0">
+            <div className="font-mono text-lg break-all sm:text-xl">{doc.documentNumber}</div>
             <div className="text-muted-foreground">{statusLabel(doc)}</div>
           </div>
-          <div className="flex flex-wrap gap-2 sm:justify-end">
-            <Link
-              href="/documents"
-              className="text-sm px-3 py-1 rounded-md border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
+          <div className="inspect-toolbar-actions">
+            <Link href="/documents" className="btn-secondary">
               返回列表
             </Link>
             {!shipped &&
               !completed &&
               doc.status === DocumentStatus.INSPECTING &&
               inspectorLikeEditing && (
-              <div className="flex flex-wrap items-center gap-2">
-                <label className="text-xs text-muted-foreground whitespace-nowrap">
-                  箱數 A（小件）
-                </label>
-                <input
-                  className="rounded-md border border-input bg-background text-sm px-2 py-1 w-20 text-right tabular-nums shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  value={packageCountA}
-                  inputMode="numeric"
-                  onChange={(e) => setPackageCountA(e.target.value)}
-                />
-                <label className="text-xs text-muted-foreground whitespace-nowrap">
-                  C（大件）
-                </label>
-                <input
-                  className="rounded-md border border-input bg-background text-sm px-2 py-1 w-20 text-right tabular-nums shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  value={packageCountC}
-                  inputMode="numeric"
-                  onChange={(e) => setPackageCountC(e.target.value)}
-                />
+              <div className="toolbar">
+                <div className="field">
+                  <label className="field-label whitespace-nowrap">箱數 A（小件）</label>
+                  <input
+                    className="input-qty"
+                    value={packageCountA}
+                    inputMode="numeric"
+                    onChange={(e) => setPackageCountA(e.target.value)}
+                  />
+                </div>
+                <div className="field">
+                  <label className="field-label whitespace-nowrap">C（大件）</label>
+                  <input
+                    className="input-qty"
+                    value={packageCountC}
+                    inputMode="numeric"
+                    onChange={(e) => setPackageCountC(e.target.value)}
+                  />
+                </div>
               </div>
             )}
             {completed && !shipped && (
               <button
                 type="button"
-                className="text-sm px-3 py-1 rounded-md bg-primary text-primary-foreground shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="btn-primary"
                 onClick={() => openPrintTab()}
               >
                 列印
@@ -780,7 +766,7 @@ export default function DocumentInspect({ id }: { id: string }) {
             {canStock && completed && !shipped && doc.flow === "IN" && !stocked && (
               <button
                 type="button"
-                className="text-sm px-3 py-1 rounded-md bg-emerald-700 text-white shadow-sm hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="btn-success"
                 onClick={async () => {
                   if (!window.confirm("確認已完成上架，標記此單據已入庫？")) return;
                   const res = await fetch(`/api/documents/${id}/stock`, {
@@ -807,7 +793,7 @@ export default function DocumentInspect({ id }: { id: string }) {
             {canDeleteDoc && (
               <button
                 type="button"
-                className="text-sm px-3 py-1 rounded-md border border-destructive/50 text-destructive bg-background shadow-sm hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="btn-destructive"
                 onClick={() => void removeDoc()}
               >
                 刪除單據
@@ -818,7 +804,7 @@ export default function DocumentInspect({ id }: { id: string }) {
               doc.status === DocumentStatus.PENDING && (
               <button
                 type="button"
-                className="text-sm px-3 py-1 rounded bg-amber-600 text-white"
+                className="btn-warning"
                 onClick={() =>
                   doc.flow === "IN"
                     ? void startInspectAs("INSPECTOR")
@@ -831,7 +817,7 @@ export default function DocumentInspect({ id }: { id: string }) {
             {showHandoffToInspector && (
               <button
                 type="button"
-                className="text-sm px-3 py-1 rounded-md bg-sky-600 text-white shadow-sm hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="btn-info"
                 onClick={() => void releaseHandoff()}
               >
                 揀貨完成，交驗收
@@ -840,7 +826,7 @@ export default function DocumentInspect({ id }: { id: string }) {
             {canCancelInspect && (
               <button
                 type="button"
-                className="text-sm px-3 py-1 rounded-md border border-orange-400 text-orange-700 bg-background shadow-sm hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="btn-warn-outline"
                 onClick={() => void cancelInspect()}
               >
                 取消驗收
@@ -849,7 +835,7 @@ export default function DocumentInspect({ id }: { id: string }) {
             {showCompleteWithInspector && (
               <button
                 type="button"
-                className="text-sm px-3 py-1 rounded-md bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="btn-success"
                 onClick={() => void completeInspect("with-inspector")}
               >
                 儲存並完成單據
@@ -858,7 +844,7 @@ export default function DocumentInspect({ id }: { id: string }) {
             {showCompletePickerOnly && (
               <button
                 type="button"
-                className="text-sm px-3 py-1 rounded-md border border-emerald-600 text-emerald-800 bg-background shadow-sm hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="btn-success-outline"
                 onClick={() => void completeInspect("picker-only")}
               >
                 儲存並完成（略過驗收）
@@ -872,19 +858,22 @@ export default function DocumentInspect({ id }: { id: string }) {
               !(role === Role.WAREHOUSE_SUPERVISOR && stocked) && (
               <button
                 type="button"
-                className="text-sm px-3 py-1 rounded-md border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground"
+                className="btn-secondary"
                 onClick={() => void unlock()}
               >
                 解鎖（補驗收）
               </button>
             )}
-            {showShip && (
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center w-full sm:w-auto">
-                <label className="text-xs text-muted-foreground whitespace-nowrap">
-                  物流單號
-                </label>
+          </div>
+        </div>
+        {showShip && (
+          <div className="inspect-ship-panel">
+            <p className="text-xs font-medium text-muted-foreground">出貨／物流</p>
+            <div className="inspect-ship-grid">
+              <div className="field col-span-2 sm:col-span-2 lg:col-span-2">
+                <label className="field-label">物流單號</label>
                 <input
-                  className="rounded-md border border-input bg-background text-sm px-2 py-1 w-44 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="ui-input"
                   value={logisticsNo}
                   onChange={(e) => setLogisticsNo(e.target.value.replace(/\s+/g, ""))}
                   onKeyDown={(e) => {
@@ -899,15 +888,22 @@ export default function DocumentInspect({ id }: { id: string }) {
                   }
                   disabled={noLogisticsInput}
                 />
+              </div>
+              <div className="field">
+                <span className="field-label invisible select-none" aria-hidden>
+                  掃描
+                </span>
                 <button
                   type="button"
-                  className="text-sm px-3 py-1 rounded-md border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-secondary w-full"
                   onClick={() => setCamTarget("logistics")}
                   disabled={noLogisticsInput}
                 >
                   鏡頭掃描
                 </button>
-                <label className="flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap select-none">
+              </div>
+              <div className="field flex flex-col justify-end gap-2 col-span-2 sm:col-span-1">
+                <label className="flex items-center gap-2 text-xs text-muted-foreground select-none">
                   <input
                     type="checkbox"
                     className="accent-primary"
@@ -924,7 +920,7 @@ export default function DocumentInspect({ id }: { id: string }) {
                   />
                   自取
                 </label>
-                <label className="flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap select-none">
+                <label className="flex items-center gap-2 text-xs text-muted-foreground select-none">
                   <input
                     type="checkbox"
                     className="accent-primary"
@@ -941,49 +937,51 @@ export default function DocumentInspect({ id }: { id: string }) {
                   />
                   倉庫親送
                 </label>
-                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                  箱數 A {Number(packageCountA) || 0} / C {Number(packageCountC) || 0}
-                  {noLogisticsInput ? "（選填紀錄）" : ""}
-                </span>
-                <label className="text-xs text-muted-foreground whitespace-nowrap">
-                  A（小件）
-                </label>
+              </div>
+              <div className="field">
+                <label className="field-label">A（小件）</label>
                 <input
-                  className="rounded-md border border-input bg-background text-sm px-2 py-1 w-20 text-right tabular-nums shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="input-qty w-full max-w-none"
                   value={packageCountA}
                   inputMode="numeric"
                   onChange={(e) => setPackageCountA(e.target.value)}
                 />
-                <label className="text-xs text-muted-foreground whitespace-nowrap">
-                  C（大件）
-                </label>
+              </div>
+              <div className="field">
+                <label className="field-label">C（大件）</label>
                 <input
-                  className="rounded-md border border-input bg-background text-sm px-2 py-1 w-20 text-right tabular-nums shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="input-qty w-full max-w-none"
                   value={packageCountC}
                   inputMode="numeric"
                   onChange={(e) => setPackageCountC(e.target.value)}
                 />
-                <label className="text-xs text-muted-foreground whitespace-nowrap">
-                  備註（選填）
-                </label>
+              </div>
+              <div className="field col-span-2 sm:col-span-2">
+                <label className="field-label">備註（選填）</label>
                 <input
-                  className="rounded-md border border-input bg-background text-sm px-2 py-1 w-36 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="ui-input"
                   value={packageSize}
                   onChange={(e) => setPackageSize(e.target.value)}
                   placeholder="例：60x40x40"
                 />
+              </div>
+              <div className="field col-span-2 sm:col-span-1 flex flex-col justify-end">
                 <button
                   type="button"
-                  className="text-sm px-3 py-1 rounded-md bg-primary text-primary-foreground shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                  className="btn-primary w-full"
                   onClick={() => void ship()}
                   disabled={shipping}
                 >
                   {shipping ? "出貨中…" : "出貨"}
                 </button>
               </div>
-            )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              箱數 A {Number(packageCountA) || 0} / C {Number(packageCountC) || 0}
+              {noLogisticsInput ? "（自取／親送時 A/C 僅作紀錄）" : ""}
+            </p>
           </div>
-        </div>
+        )}
         <hr className="border-border" />
         <p>
           類型 {doc.documentType} ／ {flowZh[doc.flow] ?? "—"} ／ 部門{" "}
@@ -1078,12 +1076,13 @@ export default function DocumentInspect({ id }: { id: string }) {
 
       {!shipped &&
         inspectorLikeEditing && (
-          <div className="rounded-xl border border-border bg-card p-4 space-y-2 shadow-xs">
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-              <div className="flex flex-col gap-0.5 min-w-0 flex-1 sm:min-w-[12rem]">
-                <label className="text-xs text-muted-foreground">條碼／貨號</label>
+          <div className="panel panel-body space-y-2">
+            <p className="text-sm font-medium text-foreground">條碼驗收</p>
+            <div className="filter-bar !grid-cols-2 sm:!grid-cols-4">
+              <div className="field field-wide sm:col-span-2">
+                <label className="field-label">條碼／貨號</label>
                 <input
-                  className="w-full max-w-full sm:max-w-md rounded-md border border-input bg-background px-2 py-1.5 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="ui-input"
                   placeholder="條碼／貨號"
                   value={manualCode}
                   onChange={(e) => setManualCode(e.target.value)}
@@ -1092,34 +1091,36 @@ export default function DocumentInspect({ id }: { id: string }) {
                   }
                 />
               </div>
-              <div className="flex flex-col gap-0.5">
-                <label className="text-xs text-muted-foreground">累加數量</label>
+              <div className="field">
+                <label className="field-label">累加數量</label>
                 <input
                   type="text"
                   inputMode="decimal"
-                  className="w-24 rounded-md border border-input bg-background px-2 py-1.5 text-sm text-right tabular-nums shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="input-qty w-full max-w-none"
                   value={barcodeBumpQty}
                   onChange={(e) => setBarcodeBumpQty(e.target.value)}
                   title="每次掃描或按累加時要加上的驗收量，預設 1"
                 />
               </div>
-              <button
-                type="button"
-                className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                onClick={() => bumpLineByCode(manualCode)}
-              >
-                累加
-              </button>
-              <button
-                type="button"
-                className="text-sm px-3 py-1.5 rounded-md border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                onClick={() => setCamTarget("line")}
-              >
-                鏡頭掃描
-              </button>
+              <div className="toolbar-stretch !col-span-2 sm:!col-span-4">
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => bumpLineByCode(manualCode)}
+                >
+                  累加
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setCamTarget("line")}
+                >
+                  鏡頭掃描
+                </button>
+              </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              鏡頭掃描也會使用上方「累加數量」。核對無誤後按上方「儲存並完成單據」。
+              鏡頭掃描也會使用上方「累加數量」。核對無誤後按「儲存並完成單據」。
             </p>
           </div>
         )}

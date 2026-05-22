@@ -6,6 +6,13 @@
 "use client";
 
 import { AUDIT_ACTION_LABEL, type AuditAction } from "@/lib/audit";
+import {
+  Field,
+  FilterBar,
+  ListCard,
+  MobileList,
+  TableShell,
+} from "@/components/ui/page-shell";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type Row = {
@@ -30,7 +37,6 @@ const ACTION_OPTIONS = Object.entries(AUDIT_ACTION_LABEL) as Array<
   [AuditAction, string]
 >;
 
-/** 舊紀錄摘要用程式風格寫入時，列表顯示改為口語／一致用語 */
 function humanizeAuditSummary(summary: string): string {
   return summary
     .replace(/驗收方式=BARCODE/g, "驗收方式：條碼驗收")
@@ -46,6 +52,18 @@ function todayLocal(offsetDays = 0) {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
+}
+
+function rowDisplay(r: Row, userById: Map<string, UserOpt>) {
+  const userOpt = r.userId ? userById.get(r.userId) : null;
+  const display =
+    r.userName ||
+    userOpt?.name ||
+    r.username ||
+    userOpt?.username ||
+    "（已刪除）";
+  const userLine = r.username || userOpt?.username;
+  return { display, userLine };
 }
 
 export default function AuditLogsClient({ users }: { users: UserOpt[] }) {
@@ -100,7 +118,6 @@ export default function AuditLogsClient({ users }: { users: UserOpt[] }) {
 
   useEffect(() => {
     void load(false, null);
-    // 首次載入；不依賴 load 避免無限循環
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -112,70 +129,65 @@ export default function AuditLogsClient({ users }: { users: UserOpt[] }) {
 
   return (
     <div className="space-y-4">
-      <section className="rounded-xl border border-border bg-card p-3 shadow-xs">
-        <div className="flex flex-wrap gap-3 items-end">
-          <div>
-            <label className="text-xs text-muted-foreground block">關鍵字</label>
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="摘要 / 對象 / 人名 / 帳號"
-              className="mt-0.5 rounded-md border border-input bg-background px-2 py-1.5 text-sm min-w-[12rem]"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground block">動作</label>
-            <select
-              value={action}
-              onChange={(e) => setAction(e.target.value)}
-              className="mt-0.5 rounded-md border border-input bg-background px-2 py-1.5 text-sm min-w-[12rem]"
-            >
-              <option value="">全部</option>
-              {ACTION_OPTIONS.map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground block">人員</label>
-            <select
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              className="mt-0.5 rounded-md border border-input bg-background px-2 py-1.5 text-sm min-w-[10rem]"
-            >
-              <option value="">全部</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}（{u.username}）
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground block">起</label>
-            <input
-              type="date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-              className="mt-0.5 rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground block">迄</label>
-            <input
-              type="date"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              className="mt-0.5 rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-            />
-          </div>
+      <FilterBar>
+        <Field label="關鍵字" className="field-wide">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="摘要 / 對象 / 人名 / 帳號"
+            className="ui-input"
+          />
+        </Field>
+        <Field label="動作">
+          <select
+            value={action}
+            onChange={(e) => setAction(e.target.value)}
+            className="ui-select"
+          >
+            <option value="">全部</option>
+            {ACTION_OPTIONS.map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="人員">
+          <select
+            value={userId}
+            onChange={(e) => setUserId(e.target.value)}
+            className="ui-select"
+          >
+            <option value="">全部</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}（{u.username}）
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="起">
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            className="ui-input"
+          />
+        </Field>
+        <Field label="迄">
+          <input
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            className="ui-input"
+          />
+        </Field>
+        <div className="toolbar-stretch">
           <button
             type="button"
             disabled={loading}
             onClick={() => void load(false, null)}
-            className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground shadow hover:bg-primary/90 disabled:opacity-50"
+            className="btn-primary"
           >
             查詢
           </button>
@@ -190,54 +202,83 @@ export default function AuditLogsClient({ users }: { users: UserOpt[] }) {
               setTo(todayLocal(0));
               setTimeout(() => void load(false, null), 0);
             }}
-            className="text-sm px-3 py-1.5 rounded-md border border-input bg-background hover:bg-accent disabled:opacity-50"
+            className="btn-secondary"
           >
             重置
           </button>
         </div>
-      </section>
+      </FilterBar>
 
-      {err && (
-        <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 p-2 rounded-md whitespace-pre-wrap break-all">
-          {err}
-        </p>
-      )}
+      {err && <p className="alert-error whitespace-pre-wrap break-all">{err}</p>}
 
-      <section className="rounded-xl border border-border bg-card shadow-xs overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead className="bg-muted text-left text-muted-foreground">
+      <MobileList>
+        {rows.length === 0 ? (
+          <p className="text-center text-sm text-muted-foreground py-8">
+            {loading ? "讀取中…" : "查無紀錄。"}
+          </p>
+        ) : (
+          rows.map((r) => {
+            const { display, userLine } = rowDisplay(r, userById);
+            return (
+              <ListCard key={r.id}>
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(r.createdAt).toLocaleString()}
+                  </span>
+                  <span className="badge-pending text-[11px]">
+                    {AUDIT_ACTION_LABEL[r.action as AuditAction] ?? r.action}
+                  </span>
+                </div>
+                <div className="font-medium text-sm">{display}</div>
+                {userLine && (
+                  <div className="font-mono text-xs text-muted-foreground">{userLine}</div>
+                )}
+                {(r.targetType || r.targetLabel) && (
+                  <div className="text-xs text-muted-foreground">
+                    {r.targetType && <span>{r.targetType} · </span>}
+                    {r.targetLabel}
+                  </div>
+                )}
+                <p className="text-xs whitespace-pre-wrap break-all">
+                  {r.summary ? humanizeAuditSummary(r.summary) : "—"}
+                </p>
+                {r.ip && (
+                  <p className="text-[11px] font-mono text-muted-foreground">IP {r.ip}</p>
+                )}
+              </ListCard>
+            );
+          })
+        )}
+      </MobileList>
+
+      <TableShell>
+        <table className="data-table">
+          <thead>
             <tr>
-              <th className="p-2 whitespace-nowrap">時間</th>
-              <th className="p-2 whitespace-nowrap">操作者</th>
-              <th className="p-2 whitespace-nowrap">動作</th>
-              <th className="p-2">對象</th>
-              <th className="p-2">摘要</th>
-              <th className="p-2 whitespace-nowrap">IP</th>
+              <th>時間</th>
+              <th>操作者</th>
+              <th>動作</th>
+              <th>對象</th>
+              <th>摘要</th>
+              <th>IP</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr className="border-t border-border">
-                <td colSpan={6} className="p-6 text-center text-muted-foreground text-sm">
+              <tr>
+                <td colSpan={6} className="p-6 text-center text-muted-foreground">
                   {loading ? "讀取中…" : "查無紀錄。"}
                 </td>
               </tr>
             ) : (
               rows.map((r) => {
-                const userOpt = r.userId ? userById.get(r.userId) : null;
-                const display =
-                  r.userName ||
-                  userOpt?.name ||
-                  r.username ||
-                  userOpt?.username ||
-                  "（已刪除）";
-                const userLine = r.username || userOpt?.username;
+                const { display, userLine } = rowDisplay(r, userById);
                 return (
-                  <tr key={r.id} className="border-t border-border align-top">
-                    <td className="p-2 whitespace-nowrap text-xs">
+                  <tr key={r.id} className="align-top">
+                    <td className="whitespace-nowrap text-xs">
                       {new Date(r.createdAt).toLocaleString()}
                     </td>
-                    <td className="p-2 whitespace-nowrap">
+                    <td className="whitespace-nowrap">
                       <div className="font-medium">{display}</div>
                       {userLine && (
                         <div className="font-mono text-xs text-muted-foreground">
@@ -245,16 +286,16 @@ export default function AuditLogsClient({ users }: { users: UserOpt[] }) {
                         </div>
                       )}
                     </td>
-                    <td className="p-2 whitespace-nowrap text-xs">
+                    <td className="whitespace-nowrap text-xs">
                       {AUDIT_ACTION_LABEL[r.action as AuditAction] ?? r.action}
                     </td>
-                    <td className="p-2 text-xs">
+                    <td className="text-xs">
                       {r.targetType && (
                         <div className="text-muted-foreground">{r.targetType}</div>
                       )}
                       {r.targetLabel && <div>{r.targetLabel}</div>}
                     </td>
-                    <td className="p-2 text-xs whitespace-pre-wrap break-all">
+                    <td className="text-xs whitespace-pre-wrap break-all">
                       {r.summary ? humanizeAuditSummary(r.summary) : "—"}
                       {r.meta != null && typeof r.meta === "object" && (
                         <details className="mt-1">
@@ -267,7 +308,7 @@ export default function AuditLogsClient({ users }: { users: UserOpt[] }) {
                         </details>
                       )}
                     </td>
-                    <td className="p-2 whitespace-nowrap text-[11px] text-muted-foreground font-mono">
+                    <td className="whitespace-nowrap text-[11px] text-muted-foreground font-mono">
                       {r.ip || "—"}
                     </td>
                   </tr>
@@ -276,7 +317,7 @@ export default function AuditLogsClient({ users }: { users: UserOpt[] }) {
             )}
           </tbody>
         </table>
-      </section>
+      </TableShell>
 
       <div className="flex justify-center">
         {nextCursor ? (
@@ -284,7 +325,7 @@ export default function AuditLogsClient({ users }: { users: UserOpt[] }) {
             type="button"
             disabled={loading}
             onClick={() => void load(true, nextCursor)}
-            className="text-sm px-3 py-1.5 rounded-md border border-input bg-background hover:bg-accent disabled:opacity-50"
+            className="btn-secondary"
           >
             {loading ? "讀取中…" : "載入更多"}
           </button>

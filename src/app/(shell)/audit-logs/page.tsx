@@ -7,6 +7,7 @@ import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { Page, PageHeader } from "@/components/ui/page-shell";
 import AuditLogsClient from "./audit-logs-client";
 
 export const metadata: Metadata = { title: "操作紀錄" };
@@ -27,11 +28,9 @@ export default async function AuditLogsPage() {
   });
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-4">
-        操作紀錄
-      </h1>
+    <Page>
+      <PageHeader title="操作紀錄" />
       <AuditLogsClient users={users} />
-    </div>
+    </Page>
   );
 }

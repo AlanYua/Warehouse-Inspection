@@ -43,8 +43,7 @@ type ProductOption = {
   brand: string | null;
 };
 
-const inputCls =
-  "mt-0.5 block rounded-md border border-input bg-background px-2 py-1.5 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+const inputCls = "ui-input";
 
 function fmtDate(iso: string) {
   const d = new Date(iso);
@@ -232,18 +231,12 @@ export default function ShippingHistoryClient() {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl">
-      <div className="space-y-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            出貨歷史紀錄
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            僅供查詢檢視，無法編輯。僅含已出貨／已入庫單據；入庫為正（+）、出貨為負（-）
-          </p>
-        </div>
+    <div className="space-y-6">
+      <p className="page-desc -mt-2">
+        僅供查詢檢視，無法編輯。僅含已出貨／已入庫單據；入庫為正（+）、出貨為負（-）
+      </p>
         <form
-          className="flex flex-wrap items-end gap-2"
+          className="filter-bar"
           onSubmit={(e) => {
             e.preventDefault();
             void search();
@@ -357,7 +350,7 @@ export default function ShippingHistoryClient() {
           <button
             type="submit"
             disabled={loading || !selectedProduct}
-            className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm shadow-sm hover:bg-primary/90 disabled:opacity-50"
+            className="btn-primary"
           >
             {loading ? "查詢中…" : "查詢"}
           </button>
@@ -375,7 +368,6 @@ export default function ShippingHistoryClient() {
             ) : null}
           </p>
         ) : null}
-      </div>
 
       {err ? (
         <pre className="text-xs bg-muted text-muted-foreground p-2 rounded-md overflow-auto border border-border">

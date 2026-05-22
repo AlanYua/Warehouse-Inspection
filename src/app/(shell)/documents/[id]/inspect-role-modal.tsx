@@ -38,10 +38,10 @@ export default function InspectRoleModal({
           ，揀貨者鎖定後請勿再開其他未完成單，須先「揀貨完成，交驗收」或略過完成。
           揀貨者：逐列勾選「揀過」後交驗收（不可手改驗收量）。驗收者：手改驗收量為手動核對，掃條碼／貨號累加為條碼核對；核對完按「儲存並完成單據」。
         </p>
-        <div className="mt-4 flex flex-col gap-2">
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           <button
             type="button"
-            className="text-sm px-3 py-2 rounded-md bg-primary text-primary-foreground shadow hover:bg-primary/90"
+            className="btn-primary w-full sm:flex-1"
             onClick={() => onSelect("PICKER")}
           >
             我是揀貨者
@@ -49,7 +49,7 @@ export default function InspectRoleModal({
           {!salesPickerOnly && (
             <button
               type="button"
-              className="text-sm px-3 py-2 rounded-md border border-input bg-background shadow-sm hover:bg-accent"
+              className="btn-info w-full sm:flex-1"
               onClick={() => onSelect("INSPECTOR")}
             >
               我是驗收者
@@ -57,7 +57,7 @@ export default function InspectRoleModal({
           )}
           <button
             type="button"
-            className="text-sm px-3 py-1 text-muted-foreground hover:text-foreground"
+            className="btn-ghost w-full sm:w-auto"
             onClick={onClose}
           >
             取消

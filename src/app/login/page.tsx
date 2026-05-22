@@ -45,12 +45,17 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-muted/40">
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-gradient-to-b from-muted/50 via-background to-muted/30">
       <form
         onSubmit={onSubmit}
-        className="w-full max-w-sm space-y-4 rounded-xl border border-border bg-card text-card-foreground p-6 shadow-xs"
+        className="panel w-full max-w-md space-y-5 p-6 sm:p-8 shadow-md"
       >
-        <h1 className="text-xl font-semibold text-center">Warehouse Inspection</h1>
+        <div className="text-center space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Warehouse
+          </p>
+          <h1 className="page-title text-center text-2xl sm:text-3xl">倉庫驗收系統</h1>
+        </div>
         {idleMsg && (
           <p className="text-sm text-amber-700 dark:text-amber-400 text-center">
             {idleMsg}
@@ -59,28 +64,28 @@ function LoginForm() {
         {err && (
           <p className="text-sm text-destructive text-center">{err}</p>
         )}
-        <div>
-          <label htmlFor="login-username" className="block text-xs text-muted-foreground mb-1">
+        <div className="field">
+          <label htmlFor="login-username" className="field-label">
             帳號
           </label>
           <input
             id="login-username"
             required
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="ui-input"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="username"
           />
         </div>
-        <div>
-          <label htmlFor="login-password" className="block text-xs text-muted-foreground mb-1">
+        <div className="field">
+          <label htmlFor="login-password" className="field-label">
             密碼
           </label>
           <input
             id="login-password"
             type="password"
             required
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="ui-input"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
@@ -89,7 +94,7 @@ function LoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-md bg-primary text-primary-foreground py-2.5 text-sm font-medium shadow hover:bg-primary/90 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="btn-primary w-full min-h-10"
         >
           {loading ? "…" : "登入"}
         </button>

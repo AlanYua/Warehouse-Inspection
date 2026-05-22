@@ -192,16 +192,16 @@ export default function ChannelsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-        通路/廠商主檔
-      </h1>
+    <div className="page">
+      <header className="page-header">
+        <h1 className="page-title">通路/廠商主檔</h1>
+      </header>
       <form
         onSubmit={create}
-        className="grid grid-cols-1 md:grid-cols-3 gap-2 p-4 border border-border rounded-xl bg-card text-card-foreground text-sm shadow-xs"
+        className="panel panel-body grid grid-cols-1 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3"
       >
         <input
-          className="rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="ui-input"
           placeholder="通路代碼"
           value={form.channelCode}
           onChange={(e) =>
@@ -210,14 +210,14 @@ export default function ChannelsPage() {
           required
         />
         <input
-          className="rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="ui-input"
           placeholder="名稱"
           value={form.name}
           onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
           required
         />
         <select
-          className="rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="ui-input"
           value={form.departmentId}
           onChange={(e) =>
             setForm((f) => ({ ...f, departmentId: e.target.value }))
@@ -231,19 +231,19 @@ export default function ChannelsPage() {
           ))}
         </select>
         <input
-          className="rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="ui-input"
           placeholder="電話"
           value={form.phone}
           onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
         />
         <input
-          className="rounded-md border border-input bg-background px-2 py-1 md:col-span-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="ui-input md:col-span-2"
           placeholder="地址"
           value={form.address}
           onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
         />
         <input
-          className="rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="ui-input"
           placeholder="凌越代碼"
           value={form.lingyueCode}
           onChange={(e) =>
@@ -252,7 +252,7 @@ export default function ChannelsPage() {
         />
         <button
           type="submit"
-          className="md:col-span-2 rounded-md bg-primary text-primary-foreground py-1 font-medium shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="btn-primary sm:col-span-2"
         >
           新增
         </button>
@@ -302,7 +302,7 @@ export default function ChannelsPage() {
 
       <div className="flex gap-2">
         <select
-          className="rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="ui-input"
           value={deptQueryId}
           onChange={(e) => {
             setSel({});
@@ -316,7 +316,7 @@ export default function ChannelsPage() {
           ))}
         </select>
         <input
-          className="rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="ui-input"
           placeholder="關鍵字查詢（代碼 / 名稱 / 部門 / 電話 / 地址 / 凌越）"
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}

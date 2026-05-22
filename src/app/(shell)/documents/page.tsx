@@ -6,6 +6,7 @@
 import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { can } from "@/lib/permissions";
+import { Page, PageHeader } from "@/components/ui/page-shell";
 import DocumentsList from "./documents-list";
 
 export const metadata: Metadata = { title: "單據列表" };
@@ -16,11 +17,9 @@ export default async function DocumentsPage() {
   const canDelete = !!(role && can(role, "documents.delete"));
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-4">
-        單據
-      </h1>
+    <Page>
+      <PageHeader title="單據" />
       <DocumentsList canDelete={canDelete} role={role ?? undefined} />
-    </div>
+    </Page>
   );
 }

@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { localCalendarYmd } from "@/lib/dashboard-date-range";
+import { StatCard } from "@/components/ui/page-shell";
 import type { Dash } from "./dashboard-types";
 
 export default function DashboardClient() {
@@ -150,28 +151,28 @@ export default function DashboardClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-border/80 bg-card/70 p-4 shadow-sm">
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground block">開始日</label>
+      <div className="filter-bar">
+        <div className="field">
+          <label className="field-label">開始日</label>
           <input
             type="date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            className="rounded-md border border-input bg-background px-2 py-1.5 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="ui-input"
           />
         </div>
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground block">結束日</label>
+        <div className="field">
+          <label className="field-label">結束日</label>
           <input
             type="date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            className="rounded-md border border-input bg-background px-2 py-1.5 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="ui-input"
           />
         </div>
         <button
           type="button"
-          className="text-sm px-3 py-1.5 rounded-md border border-border bg-background shadow-xs transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="btn-secondary"
           onClick={() => {
             const t = localCalendarYmd();
             setDateFrom(t);
@@ -182,7 +183,7 @@ export default function DashboardClient() {
         </button>
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden">
+        <section className="panel overflow-hidden">
           <div className="p-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 border-b border-border">
             <div>
               <div className="text-lg font-semibold text-foreground">出貨</div>
@@ -200,7 +201,7 @@ export default function DashboardClient() {
             </div>
           </div>
           <div className="p-4 space-y-4">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="stat-grid">
               <Stat label="未完成" value={d.totalsByFlow.OUT.pending} />
               <Stat label="驗收中" value={d.totalsByFlow.OUT.inspecting} />
               <Stat label="已完成" value={d.totalsByFlow.OUT.completed} />
@@ -279,7 +280,7 @@ export default function DashboardClient() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden">
+        <section className="panel overflow-hidden">
           <div className="p-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 border-b border-border">
             <div>
               <div className="text-lg font-semibold text-foreground">進貨/退貨</div>
@@ -297,7 +298,7 @@ export default function DashboardClient() {
             </div>
           </div>
           <div className="p-4 space-y-4">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="stat-grid">
               <Stat label="未完成" value={d.totalsByFlow.IN.pending} />
               <Stat label="驗收中" value={d.totalsByFlow.IN.inspecting} />
               <Stat label="已完成" value={d.totalsByFlow.IN.completed} />
@@ -369,7 +370,7 @@ export default function DashboardClient() {
       </div>
 
       <details
-        className="rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden"
+        className="panel overflow-hidden"
         onToggle={(e) => {
           const open = (e.currentTarget as HTMLDetailsElement).open;
           if (open && !detailsLoaded) void load(true);
@@ -382,7 +383,7 @@ export default function DashboardClient() {
               物流 / 退貨 / 品牌 / 人員
             </div>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full sm:w-auto sm:max-w-lg sm:shrink-0 sm:justify-end">
+          <div className="stat-grid-3 w-full sm:max-w-lg sm:shrink-0">
             <Stat label="物流件數" value={d.totals.logisticsPackages} />
             <Stat label="自送件數" value={d.totals.selfDeliveryPackages} />
             <Stat label="退貨件數" value={d.totals.returnPieces} />
@@ -732,7 +733,7 @@ export default function DashboardClient() {
       </div>
           <button
         type="button"
-        className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="btn-primary"
         onClick={() => void load(true)}
           >
             重新整理
@@ -744,10 +745,5 @@ export default function DashboardClient() {
 }
 
 function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-xl border border-border bg-card text-card-foreground p-3 shadow-xs">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="text-2xl font-semibold tabular-nums">{value}</div>
-    </div>
-  );
+  return <StatCard label={label} value={value} />;
 }

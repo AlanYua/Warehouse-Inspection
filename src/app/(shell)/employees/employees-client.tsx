@@ -160,19 +160,19 @@ export default function EmployeesClient({
         </p>
       )}
 
-      <section className="rounded-xl border border-border bg-card p-4 shadow-xs space-y-3">
+      <section className="panel panel-body space-y-3">
         <h2 className="font-medium text-foreground">新增員工</h2>
         <form
           onSubmit={(e) => void createUser(e)}
-          className="flex flex-wrap gap-3 items-end"
+          className="filter-bar !grid-cols-2 sm:!grid-cols-3 lg:!grid-cols-5"
         >
           <div>
-            <label className="text-xs text-muted-foreground block">帳號</label>
+            <label className="field-label">帳號</label>
             <input
               required
               minLength={2}
               maxLength={64}
-              className="mt-0.5 rounded-md border border-input bg-background px-2 py-1.5 text-sm min-w-[10rem] font-mono"
+              className="ui-input font-mono"
               value={cUsername}
               onChange={(e) => setCUsername(e.target.value)}
               autoComplete="off"
@@ -217,14 +217,14 @@ export default function EmployeesClient({
           <button
             type="submit"
             disabled={busy === "create"}
-            className="text-sm px-3 py-1.5 rounded-md bg-primary text-primary-foreground shadow hover:bg-primary/90 disabled:opacity-50"
+            className="btn-primary"
           >
             建立
           </button>
         </form>
       </section>
 
-      <section className="flex flex-wrap gap-3 items-end">
+      <section className="filter-bar !grid-cols-2 sm:!grid-cols-3">
         <div>
           <label className="text-xs text-muted-foreground block">部門 / 角色</label>
           <select

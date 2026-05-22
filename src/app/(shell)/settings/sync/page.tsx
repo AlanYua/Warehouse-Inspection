@@ -35,19 +35,19 @@ export default function SyncSettingsPage() {
   }, []);
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-        匯入紀錄
-      </h1>
-      <p className="text-sm text-muted-foreground">
-        顯示最近的 Excel 匯入紀錄（以及其他匯入來源的結果），用來追查匯入成功/失敗原因。
-      </p>
+    <div className="page max-w-3xl">
+      <header className="page-header space-y-1">
+        <h1 className="page-title">匯入紀錄</h1>
+        <p className="page-desc">
+          顯示最近的 Excel 匯入紀錄（以及其他匯入來源的結果），用來追查匯入成功/失敗原因。
+        </p>
+      </header>
       <div>
         <h2 className="font-medium text-foreground mb-2">最近匯入紀錄</h2>
         {/* Mobile cards */}
-        <div className="md:hidden space-y-2">
+        <div className="mobile-list">
           {logs.map((l) => (
-            <div key={l.id} className="rounded-xl border border-border bg-card p-3 shadow-xs space-y-1.5">
+            <div key={l.id} className="list-card">
               <div className="flex items-start justify-between gap-2">
                 <span className="font-mono text-xs font-medium">{l.source}</span>
                 <span className="text-[11px] text-muted-foreground shrink-0" suppressHydrationWarning>
@@ -76,9 +76,9 @@ export default function SyncSettingsPage() {
           )}
         </div>
         {/* Desktop table */}
-        <div className="hidden md:block overflow-x-auto rounded-xl border border-border bg-card shadow-xs">
-          <table className="min-w-full text-sm">
-            <thead className="bg-muted text-left text-muted-foreground">
+        <div className="table-shell">
+          <table className="data-table">
+            <thead>
               <tr>
                 <th className="p-2 whitespace-nowrap">時間</th>
                 <th className="p-2">來源</th>

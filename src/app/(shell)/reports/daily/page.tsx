@@ -119,32 +119,29 @@ export default function DailyReportPage() {
   }, [stocked]);
 
   return (
-    <div className="space-y-6 max-w-6xl">
-      <div className="space-y-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            日報表
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1 hidden sm:block">
-            出貨：列出當天已出貨單據（類型 / 單據號碼 / 名稱 / 檢驗總數 / 物流號碼 / 件數）
-          </p>
-          <p className="text-sm text-muted-foreground mt-1 hidden sm:block">
-            進貨/退貨：列出當天已入庫單據（類型 / 名稱 / 單據號碼 / 檢驗總數/件數）
-          </p>
-        </div>
-        <div className="flex flex-wrap items-end gap-2">
-          <div>
-            <label className="block text-xs text-muted-foreground">日期</label>
+    <div className="page">
+      <header className="page-header space-y-1">
+        <h1 className="page-title">日報表</h1>
+        <p className="page-desc hidden sm:block">
+          出貨：當天已出貨單據（類型 / 單據號碼 / 名稱 / 檢驗總數 / 物流 / 件數）
+        </p>
+        <p className="page-desc hidden sm:block">
+          進貨/退貨：當天已入庫單據（類型 / 名稱 / 單據號碼 / 檢驗總數 / 件數）
+        </p>
+      </header>
+        <div className="filter-bar">
+          <div className="field">
+            <label className="field-label">日期</label>
             <input
               type="date"
-              className="mt-0.5 block rounded-md border border-input bg-background px-2 py-1.5 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="ui-input"
               value={date}
               onChange={(e) => setDate(e.target.value)}
             />
           </div>
           <button
             type="button"
-            className="px-3 py-1.5 rounded-md border border-input bg-background text-sm shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="btn-secondary"
             onClick={() => {
               const url = `/api/reports/daily-shipped/excel?date=${encodeURIComponent(date)}`;
               window.location.assign(url);
@@ -155,7 +152,7 @@ export default function DailyReportPage() {
           </button>
           <button
             type="button"
-            className="px-3 py-1.5 rounded-md border border-input bg-background text-sm shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="btn-secondary"
             onClick={() => {
               const url = `/api/reports/daily-stocked/excel?date=${encodeURIComponent(date)}`;
               window.location.assign(url);
@@ -165,7 +162,6 @@ export default function DailyReportPage() {
             <span className="sm:hidden">入庫 Excel</span>
           </button>
         </div>
-      </div>
 
       {err && (
         <pre className="text-xs bg-muted text-muted-foreground p-2 rounded-md overflow-auto border border-border">

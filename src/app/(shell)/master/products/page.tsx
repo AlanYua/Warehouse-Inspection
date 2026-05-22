@@ -265,13 +265,13 @@ export default function ProductsPage() {
   const canNext = page < totalPages;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-        商品主檔
-      </h1>
+    <div className="page">
+      <header className="page-header">
+        <h1 className="page-title">商品主檔</h1>
+      </header>
       <form
         onSubmit={create}
-        className="grid grid-cols-1 md:grid-cols-5 gap-2 p-4 border border-border rounded-xl bg-card text-card-foreground text-sm shadow-xs"
+        className="panel panel-body grid grid-cols-1 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-5"
       >
         {createMsg && (
           <div className="md:col-span-5">
@@ -283,7 +283,7 @@ export default function ProductsPage() {
           </div>
         )}
         <input
-          className="rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="ui-input"
           placeholder="貨品編號"
           value={form.productCode}
           onChange={(e) =>
@@ -292,14 +292,14 @@ export default function ProductsPage() {
           required
         />
         <input
-          className="rounded-md border border-input bg-background px-2 py-1 md:col-span-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="ui-input md:col-span-2"
           placeholder="商品名稱"
           value={form.name}
           onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
           required
         />
         <select
-          className="rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="ui-input"
           value={form.brand}
           onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
           required
@@ -315,13 +315,13 @@ export default function ProductsPage() {
           ))}
         </select>
         <input
-          className="rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="ui-input"
           placeholder="國際條碼"
           value={form.barcode}
           onChange={(e) => setForm((f) => ({ ...f, barcode: e.target.value }))}
         />
         <input
-          className="rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="ui-input"
           placeholder="儲位"
           value={form.storageLocation}
           onChange={(e) =>
@@ -331,7 +331,7 @@ export default function ProductsPage() {
         <button
           type="submit"
           disabled={!brands.length}
-          className="rounded-md bg-primary text-primary-foreground py-1 md:col-span-4 font-medium shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+          className="btn-primary md:col-span-2 lg:col-span-4 disabled:cursor-not-allowed"
         >
           新增商品
         </button>
@@ -394,7 +394,7 @@ export default function ProductsPage() {
         )}
         <div className="flex flex-wrap gap-2 items-center">
           <input
-            className="rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="ui-input"
             placeholder="關鍵字查詢（貨號 / 條碼 / 名稱 / 品牌 / 儲位）"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}

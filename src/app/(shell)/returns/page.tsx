@@ -132,13 +132,13 @@ export default function ReturnsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-        退貨驗收
-      </h1>
+    <div className="page max-w-3xl">
+      <header className="page-header">
+        <h1 className="page-title">退貨驗收</h1>
+      </header>
       <form
         onSubmit={submit}
-        className="grid grid-cols-1 md:grid-cols-2 gap-2 p-4 border border-border rounded-xl bg-card text-card-foreground text-sm max-w-2xl shadow-xs"
+        className="panel panel-body grid grid-cols-1 gap-2 text-sm sm:grid-cols-2"
       >
         {postErr && (
           <div className="md:col-span-2 text-sm text-destructive">{postErr}</div>
@@ -211,7 +211,7 @@ export default function ReturnsPage() {
         />
         <button
           type="submit"
-          className="md:col-span-2 rounded-md bg-primary text-primary-foreground py-2 font-medium shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="btn-primary sm:col-span-2"
         >
           新增退貨驗收
         </button>

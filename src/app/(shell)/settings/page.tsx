@@ -358,29 +358,25 @@ export default function SettingsPage() {
   if (!loaded) return <p className="text-muted-foreground">載入中…</p>;
 
   return (
-    <div className="space-y-10 max-w-3xl">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            設定
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            列印表頭全公司一份；部門可在此新增或更名。新部門產生後，列印仍使用下方同一組表頭。
-          </p>
-        </div>
-         </div>
+    <div className="page max-w-3xl">
+      <header className="page-header space-y-1">
+        <h1 className="page-title">設定</h1>
+        <p className="page-desc">
+          列印表頭全公司一份；部門可在此新增或更名。新部門產生後，列印仍使用下方同一組表頭。
+        </p>
+      </header>
 
-      <details className="group rounded-xl border border-border bg-card shadow-xs overflow-hidden">
-        <summary className="cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden p-4 flex items-center justify-between gap-3 hover:bg-muted/50 transition-colors">
+      <details className="details-panel">
+        <summary>
           <div>
             <h2 className="text-lg font-semibold text-foreground">列印表頭（統一）</h2>
             <p className="text-sm text-muted-foreground mt-0.5">
               {header.companyName || "尚未設定"}
             </p>
           </div>
-          <span className="text-muted-foreground text-sm shrink-0 group-open:rotate-90 transition-transform">▶</span>
+          <span className="chevron">▶</span>
         </summary>
-        <div className="p-4 pt-0 space-y-3">
+        <div className="details-panel-body space-y-3">
           <p className="text-sm text-muted-foreground">
             所有部門的批次列印單據皆使用此抬頭。
           </p>
@@ -428,7 +424,7 @@ export default function SettingsPage() {
             </div>
             <button
               type="submit"
-              className="px-4 py-2 rounded-md bg-primary text-primary-foreground font-medium shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="btn-primary"
             >
               儲存列印表頭
             </button>
@@ -439,8 +435,8 @@ export default function SettingsPage() {
         </div>
       </details>
 
-      <details className="group rounded-xl border border-border bg-card shadow-xs overflow-hidden">
-        <summary className="cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden p-4 flex items-center justify-between gap-3 hover:bg-muted/50 transition-colors">
+      <details className="details-panel">
+        <summary>
           <div>
             <h2 className="text-lg font-semibold text-foreground">單據類型</h2>
             <p className="text-sm text-muted-foreground mt-0.5">
@@ -449,7 +445,7 @@ export default function SettingsPage() {
           </div>
           <span className="text-muted-foreground text-sm shrink-0 group-open:rotate-90 transition-transform">▶</span>
         </summary>
-        <div className="p-4 pt-0 space-y-4">
+        <div className="details-panel-body">
           <p className="text-sm text-muted-foreground">
             主檔<strong>至少一筆</strong>時，Excel 匯入與 API／DB 同步僅接受此處名稱，避免打錯。
             主檔為空時不檢核類型。更名會一併更新已建立單據上的類型文字。
@@ -484,7 +480,7 @@ export default function SettingsPage() {
             </div>
             <button
               type="submit"
-              className="px-4 py-2 rounded-md border border-input bg-background font-medium shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="btn-secondary"
             >
               新增
             </button>
@@ -543,14 +539,14 @@ export default function SettingsPage() {
                     </div>
                     <button
                       type="submit"
-                      className="px-4 py-2 rounded-md border border-input bg-background font-medium shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="btn-secondary"
                     >
                       更新
                     </button>
                   </form>
                   <button
                     type="button"
-                    className="px-4 py-2 rounded-md border border-destructive/30 text-destructive font-medium hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="btn-destructive"
                     onClick={() => void deleteDocType(t.id)}
                   >
                     刪除
@@ -567,8 +563,8 @@ export default function SettingsPage() {
         </div>
       </details>
 
-      <details className="group rounded-xl border border-border bg-card shadow-xs overflow-hidden">
-        <summary className="cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden p-4 flex items-center justify-between gap-3 hover:bg-muted/50 transition-colors">
+      <details className="details-panel">
+        <summary>
           <div>
             <h2 className="text-lg font-semibold text-foreground">品牌</h2>
             <p className="text-sm text-muted-foreground mt-0.5">
@@ -577,7 +573,7 @@ export default function SettingsPage() {
           </div>
           <span className="text-muted-foreground text-sm shrink-0 group-open:rotate-90 transition-transform">▶</span>
         </summary>
-        <div className="p-4 pt-0 space-y-4">
+        <div className="details-panel-body">
           <p className="text-sm text-muted-foreground">
             商品建立／匯入會<strong>強制</strong>使用此處已啟用的品牌（避免品牌打錯/不一致）。
           </p>
@@ -598,7 +594,7 @@ export default function SettingsPage() {
             </div>
             <button
               type="submit"
-              className="px-4 py-2 rounded-md border border-input bg-background font-medium shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="btn-secondary"
             >
               新增
             </button>
@@ -650,14 +646,14 @@ export default function SettingsPage() {
                     </label>
                     <button
                       type="submit"
-                      className="px-4 py-2 rounded-md border border-input bg-background font-medium shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="btn-secondary"
                     >
                       更新
                     </button>
                   </form>
                   <button
                     type="button"
-                    className="px-4 py-2 rounded-md border border-destructive/30 text-destructive font-medium hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="btn-destructive"
                     onClick={() => void deleteBrand(b.id)}
                   >
                     刪除
@@ -674,8 +670,8 @@ export default function SettingsPage() {
         </div>
       </details>
 
-      <details className="group rounded-xl border border-border bg-card shadow-xs overflow-hidden">
-        <summary className="cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden p-4 flex items-center justify-between gap-3 hover:bg-muted/50 transition-colors">
+      <details className="details-panel">
+        <summary>
           <div>
             <h2 className="text-lg font-semibold text-foreground">部門</h2>
             <p className="text-sm text-muted-foreground mt-0.5">
@@ -684,7 +680,7 @@ export default function SettingsPage() {
           </div>
           <span className="text-muted-foreground text-sm shrink-0 group-open:rotate-90 transition-transform">▶</span>
         </summary>
-        <div className="p-4 pt-0 space-y-4">
+        <div className="details-panel-body">
           <p className="text-sm text-muted-foreground">
             新增或更改部門名稱（單據、儀表板依部門區分）。
           </p>
@@ -706,7 +702,7 @@ export default function SettingsPage() {
             </div>
             <button
               type="submit"
-              className="px-4 py-2 rounded-md border border-input bg-background font-medium shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="btn-secondary"
             >
               建立部門
             </button>
@@ -724,7 +720,7 @@ export default function SettingsPage() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="px-4 py-2 rounded-md border border-destructive/30 text-destructive font-medium hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="btn-destructive"
                   onClick={() => void batchDeleteDept()}
                 >
                   批次刪除
@@ -766,14 +762,14 @@ export default function SettingsPage() {
                     </div>
                     <button
                       type="submit"
-                      className="px-4 py-2 rounded-md border border-input bg-background font-medium shadow-sm hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="btn-secondary"
                     >
                       更新名稱
                     </button>
                   </form>
                   <button
                     type="button"
-                    className="px-4 py-2 rounded-md border border-destructive/30 text-destructive font-medium hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="btn-destructive"
                     onClick={() => void deleteDept(d.id)}
                   >
                     刪除

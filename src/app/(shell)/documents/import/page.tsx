@@ -6,6 +6,15 @@
 "use client";
 
 import Link from "next/link";
+import {
+  ListCard,
+  MobileList,
+  Page,
+  PageHeader,
+  Panel,
+  PanelBody,
+  TableShell,
+} from "@/components/ui/page-shell";
 import { useState } from "react";
 
 type ImportDetail = {
@@ -79,64 +88,82 @@ export default function ImportExcelPage() {
   }
 
   return (
-    <div className="max-w-4xl space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-        Excel 匯入
-      </h1>
-      <p className="text-sm text-muted-foreground">
-        必填：單據類型、單據日期、單據號碼、通路代碼、貨品編號或國際條碼（至少一項）、單據數量、部門（須與該通路代碼在通路主檔的部門一致）。
-        選填：備註（未填或欄位不存在時為空）製單者未填時（預設為目前登入者）。
-      </p>
-      <div className="flex flex-wrap items-center gap-3">
-        <input
-          type="file"
-          accept=".xlsx,.xls"
-          disabled={loading}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void onFile(f);
-          }}
-        />
-        <Link
-          href="/api/import/template/documents"
-          prefetch={false}
-          className="text-sm rounded-md border border-input bg-secondary/60 px-3 py-1.5 text-secondary-foreground hover:bg-secondary"
-        >
-          下載範本
-        </Link>
-      </div>
-      {loading && <p className="text-sm">上傳中…</p>}
-      {msg && <p className="text-sm whitespace-pre-line">{msg}</p>}
+    <Page>
+      <PageHeader
+        title="Excel 匯入"
+        description="必填：單據類型、單據日期、單據號碼、通路代碼、貨品編號或國際條碼（至少一項）、單據數量、部門（須與該通路代碼在通路主檔的部門一致）。選填：備註；製單者未填時預設為目前登入者。"
+      />
+      <Panel>
+        <PanelBody className="space-y-4">
+          <div className="toolbar flex-wrap">
+            <label className="btn-secondary cursor-pointer">
+              {loading ? "上傳中…" : "選擇 Excel"}
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                disabled={loading}
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void onFile(f);
+                }}
+              />
+            </label>
+            <Link
+              href="/api/import/template/documents"
+              prefetch={false}
+              className="btn-secondary"
+            >
+              下載範本
+            </Link>
+          </div>
+          {msg && <p className="text-sm whitespace-pre-line">{msg}</p>}
 
-      {details.length > 0 && (
-        <div className="overflow-x-auto rounded-md border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2 text-left font-medium">單據號碼</th>
-                <th className="px-3 py-2 text-left font-medium">單據類型</th>
-                <th className="px-3 py-2 text-left font-medium">通路代碼</th>
-                <th className="px-3 py-2 text-left font-medium">狀況</th>
-              </tr>
-            </thead>
-            <tbody>
-              {details.map((d, i) => (
-                <tr key={i} className="border-t border-border">
-                  <td className="px-3 py-2 font-mono">{d.documentNumber}</td>
-                  <td className="px-3 py-2">{d.documentType}</td>
-                  <td className="px-3 py-2 font-mono">
-                    {d.channelCode || "—"}
-                  </td>
-                  <td className={`px-3 py-2 ${STATUS_CLASS[d.status]}`}>
-                    {STATUS_LABEL[d.status]}
-                    {d.reason ? `：${d.reason}` : ""}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+          {details.length > 0 && (
+            <>
+              <MobileList>
+                {details.map((d, i) => (
+                  <ListCard key={i}>
+                    <div className="font-mono text-sm font-medium">{d.documentNumber}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {d.documentType} · {d.channelCode || "—"}
+                    </div>
+                    <div className={`text-sm ${STATUS_CLASS[d.status]}`}>
+                      {STATUS_LABEL[d.status]}
+                      {d.reason ? `：${d.reason}` : ""}
+                    </div>
+                  </ListCard>
+                ))}
+              </MobileList>
+              <TableShell>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>單據號碼</th>
+                      <th>單據類型</th>
+                      <th>通路代碼</th>
+                      <th>狀況</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {details.map((d, i) => (
+                      <tr key={i}>
+                        <td className="font-mono">{d.documentNumber}</td>
+                        <td>{d.documentType}</td>
+                        <td className="font-mono">{d.channelCode || "—"}</td>
+                        <td className={STATUS_CLASS[d.status]}>
+                          {STATUS_LABEL[d.status]}
+                          {d.reason ? `：${d.reason}` : ""}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableShell>
+            </>
+          )}
+        </PanelBody>
+      </Panel>
 
       {extraErrors.length > 0 && (
         <ul className="mt-2 space-y-1 text-sm text-red-600">
@@ -145,6 +172,6 @@ export default function ImportExcelPage() {
           ))}
         </ul>
       )}
-    </div>
+    </Page>
   );
 }

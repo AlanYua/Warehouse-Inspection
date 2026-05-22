@@ -7,6 +7,7 @@ import type { Metadata } from "next";
 import { auth } from "@/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { Page, PageHeader } from "@/components/ui/page-shell";
 import EmployeesClient from "./employees-client";
 
 export const metadata: Metadata = { title: "員工管理" };
@@ -45,11 +46,9 @@ export default async function EmployeesPage() {
   }));
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-4">
-        員工管理
-      </h1>
+    <Page>
+      <PageHeader title="員工管理" />
       <EmployeesClient initialRows={initialRows} />
-    </div>
+    </Page>
   );
 }
