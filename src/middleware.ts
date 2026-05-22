@@ -5,6 +5,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import {
+  clearAuthSessionCookies,
+  isSessionIdleExpired,
+} from "@/lib/session-idle";
 
 export async function middleware(req: NextRequest) {
   const token = await getToken({
@@ -12,7 +16,17 @@ export async function middleware(req: NextRequest) {
     secret: process.env.AUTH_SECRET,
     secureCookie: req.nextUrl.protocol === "https:",
   });
-  const loggedIn = !!token?.sub;
+  const lastActivity = token?.lastActivity as number | undefined;
+  const idleExpired =
+    typeof lastActivity === "number" && isSessionIdleExpired(lastActivity);
+  if (idleExpired) {
+    const url = new URL("/login", req.url);
+    url.searchParams.set("reason", "idle");
+    const res = NextResponse.redirect(url);
+    clearAuthSessionCookies(res, req);
+    return res;
+  }
+  const loggedIn = !!token?.sub && !token?.expired;
   const path = req.nextUrl.pathname;
   const isLogin = path.startsWith("/login");
 

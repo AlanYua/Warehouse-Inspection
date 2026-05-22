@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { writeAudit } from "@/lib/audit";
+import { isSessionIdleExpired } from "@/lib/session-idle";
 
 const authSecret =
   process.env.AUTH_SECRET?.trim() || process.env.NEXTAUTH_SECRET?.trim();
@@ -64,7 +65,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     maxAge: 60 * 60 * 8,
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user && "role" in user && user.id) {
         token.id = user.id;
         token.role = user.role as Role;
@@ -72,7 +73,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           "username" in user && typeof user.username === "string"
             ? user.username
             : "";
-      } else if (token.id && !String(token.username ?? "").trim()) {
+        token.lastActivity = Date.now();
+        delete token.expired;
+        return token;
+      }
+
+      const lastActivity = token.lastActivity as number | undefined;
+      if (
+        typeof lastActivity === "number" &&
+        isSessionIdleExpired(lastActivity)
+      ) {
+        return { ...token, expired: true };
+      }
+
+      if (trigger === "update") {
+        const ping = session?.lastActivity;
+        if (typeof ping === "number" && Number.isFinite(ping)) {
+          token.lastActivity = ping;
+        }
+      }
+
+      if (token.id && !String(token.username ?? "").trim()) {
         const row = await prisma.user.findUnique({
           where: { id: String(token.id) },
           select: { username: true },
@@ -82,7 +103,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      if (session.user) {
+      if (token.expired) {
+        return {
+          ...session,
+          expires: new Date(0).toISOString(),
+          user: {
+            ...session.user,
+            id: "",
+            username: "",
+          },
+        };
+      }
+      if (session.user && token.id) {
         session.user.id = token.id as string;
         session.user.role = token.role as Role;
         session.user.username = (token.username as string) ?? "";

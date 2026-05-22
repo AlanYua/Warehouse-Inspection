@@ -6,13 +6,19 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 
-export default function LoginPage() {
+function LoginForm() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const searchParams = useSearchParams();
+  const idleMsg =
+    searchParams.get("reason") === "idle"
+      ? "已超過 1 小時未操作，請重新登入"
+      : null;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,6 +51,11 @@ export default function LoginPage() {
         className="w-full max-w-sm space-y-4 rounded-xl border border-border bg-card text-card-foreground p-6 shadow-xs"
       >
         <h1 className="text-xl font-semibold text-center">Warehouse Inspection</h1>
+        {idleMsg && (
+          <p className="text-sm text-amber-700 dark:text-amber-400 text-center">
+            {idleMsg}
+          </p>
+        )}
         {err && (
           <p className="text-sm text-destructive text-center">{err}</p>
         )}
@@ -84,5 +95,13 @@ export default function LoginPage() {
         </button>
         </form>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }
