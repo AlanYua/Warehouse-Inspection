@@ -210,7 +210,7 @@ function PrintInner() {
                 <tr>
                   <th className="border p-1 text-left">貨號</th>
                   <th className="border p-1 text-left">條碼</th>
-                  <th className="border p-1 text-left">品名</th>
+                  <th className="border p-1 text-left print-col-name">品名</th>
                   <th className="border p-1 text-right">單據量</th>
                   <th className="border p-1 text-right">驗收量</th>
                   <th className="border p-1 text-left">備註</th>
@@ -221,7 +221,7 @@ function PrintInner() {
                   <tr key={l.id}>
                     <td className="border p-1">{l.productCode}</td>
                     <td className="border p-1 font-mono text-xs">{l.barcode}</td>
-                    <td className="border p-1">{l.productName}</td>
+                    <td className="border p-1 print-col-name">{l.productName}</td>
                     <td className="border p-1 text-right">{l.docQuantity}</td>
                     <td className="border p-1 text-right">{l.inspectQuantity}</td>
                     <td className="border p-1 whitespace-pre-wrap">{l.remark ?? "—"}</td>
@@ -234,6 +234,43 @@ function PrintInner() {
       })}
 
       <style jsx global>{`
+        .print-table {
+          table-layout: fixed;
+        }
+
+        .print-col-name {
+          white-space: nowrap !important;
+          word-break: normal !important;
+          overflow: hidden;
+        }
+
+        .print-table th:nth-child(1),
+        .print-table td:nth-child(1) {
+          width: 16%;
+        }
+
+        .print-table th:nth-child(2),
+        .print-table td:nth-child(2) {
+          width: 18%;
+        }
+
+        .print-table th:nth-child(3),
+        .print-table td:nth-child(3) {
+          width: 46%;
+        }
+
+        .print-table th:nth-child(4),
+        .print-table td:nth-child(4),
+        .print-table th:nth-child(5),
+        .print-table td:nth-child(5) {
+          width: 5%;
+        }
+
+        .print-table th:nth-child(6),
+        .print-table td:nth-child(6) {
+          width: 10%;
+        }
+
         @media print {
           @page {
             size: A4;
@@ -362,33 +399,7 @@ function PrintInner() {
             vertical-align: top !important;
           }
 
-          .print-table th:nth-child(1),
-          .print-table td:nth-child(1) {
-            width: 24% !important;
-          }
 
-          .print-table th:nth-child(2),
-          .print-table td:nth-child(2) {
-            width: 24% !important;
-          }
-
-          .print-table th:nth-child(3),
-          .print-table td:nth-child(3) {
-            width: 32% !important;
-            word-break: break-word !important;
-          }
-
-          .print-table th:nth-child(4),
-          .print-table td:nth-child(4),
-          .print-table th:nth-child(5),
-          .print-table td:nth-child(5) {
-            width: 6% !important;
-          }
-
-          .print-table th:nth-child(6),
-          .print-table td:nth-child(6) {
-            width: 8% !important;
-          }
         }
       `}</style>
     </div>
