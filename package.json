@@ -18,6 +18,7 @@
     "db:clean-demo": "node ./node_modules/tsx/dist/cli.mjs prisma/clean-demo.ts",
     "db:clean-current": "node ./node_modules/tsx/dist/cli.mjs prisma/clean-current.ts",
     "db:clean-audit-logs": "node ./node_modules/tsx/dist/cli.mjs prisma/clean-audit-logs.ts",
+    "db:clean-db-sync-logs": "node ./node_modules/tsx/dist/cli.mjs prisma/clean-db-sync-logs.ts",
     "db:clean-bootstrap": "node ./node_modules/tsx/dist/cli.mjs prisma/clean-bootstrap.ts",
     "db:clean-bulk": "node ./node_modules/tsx/dist/cli.mjs prisma/clean-bulk.ts",
     "db:clean-all": "node ./node_modules/tsx/dist/cli.mjs prisma/clean-all.ts",
