@@ -16,14 +16,21 @@ export async function middleware(req: NextRequest) {
     secret: process.env.AUTH_SECRET,
     secureCookie: req.nextUrl.protocol === "https:",
   });
-  const lastActivity = token?.lastActivity as number | undefined;
-  const idleExpired =
-    typeof lastActivity === "number" && isSessionIdleExpired(lastActivity);
+  const idleExpired = isSessionIdleExpired(token?.lastActivity);
   if (idleExpired) {
     const url = new URL("/login", req.url);
     url.searchParams.set("reason", "idle");
     const res = NextResponse.redirect(url);
     clearAuthSessionCookies(res, req);
+    const userId = (token?.id as string | undefined) ?? token?.sub;
+    if (userId) {
+      res.cookies.set("wi-idle-audit", userId, {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 120,
+      });
+    }
     return res;
   }
   const loggedIn = !!token?.sub && !token?.expired;

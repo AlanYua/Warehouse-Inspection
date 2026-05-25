@@ -7,7 +7,7 @@
 
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { SiteCopyright } from "@/components/SiteCopyright";
 import { SESSION_IDLE_LABEL } from "@/lib/session-idle";
 
@@ -21,6 +21,14 @@ function LoginForm() {
     searchParams.get("reason") === "idle"
       ? `已超過 ${SESSION_IDLE_LABEL} 未操作，請重新登入`
       : null;
+
+  useEffect(() => {
+    if (searchParams.get("reason") !== "idle") return;
+    void fetch("/api/auth/flush-idle-audit", {
+      method: "POST",
+      credentials: "include",
+    });
+  }, [searchParams]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();

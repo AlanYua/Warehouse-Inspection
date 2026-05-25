@@ -14,6 +14,7 @@ import {
 } from "@/lib/api-guard";
 import { usernameSchema } from "@/lib/username";
 import { writeAudit } from "@/lib/audit";
+import { requireConfirmPassword } from "@/lib/reauth";
 
 const patchSchema = z
   .object({
@@ -22,6 +23,7 @@ const patchSchema = z
     password: z.string().min(6).optional(),
     username: usernameSchema.optional(),
     isActive: z.boolean().optional(),
+    confirmPassword: z.string().min(1).optional(),
   })
   .refine(
     (d) =>
@@ -64,7 +66,18 @@ export async function PATCH(
     password,
     username: newUsername,
     isActive,
+    confirmPassword,
   } = parsed.data;
+
+  const needsReauth =
+    role !== undefined ||
+    isActive !== undefined ||
+    password !== undefined;
+  if (needsReauth) {
+    const reauth = await requireConfirmPassword(u.id, confirmPassword);
+    if (reauth) return reauth;
+  }
+
   if (
     role !== undefined &&
     role !== Role.ADMIN &&
@@ -160,8 +173,12 @@ export async function PATCH(
   }
 }
 
+const deleteBodySchema = z.object({
+  confirmPassword: z.string().min(1),
+});
+
 export async function DELETE(
-  _req: Request,
+  req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
   const u = await getSessionUser();
@@ -170,6 +187,21 @@ export async function DELETE(
   }
   const f = forbidIfNoPermission(u.role, "employees.manage");
   if (f) return f;
+
+  const delParsed = deleteBodySchema.safeParse(
+    await req.json().catch(() => ({})),
+  );
+  if (!delParsed.success) {
+    return NextResponse.json(
+      { error: "請輸入目前密碼以確認此操作" },
+      { status: 400 },
+    );
+  }
+  const reauth = await requireConfirmPassword(
+    u.id,
+    delParsed.data.confirmPassword,
+  );
+  if (reauth) return reauth;
 
   const { id } = await ctx.params;
   if (u.id === id) {

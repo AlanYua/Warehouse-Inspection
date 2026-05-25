@@ -11,6 +11,8 @@ import { log } from "@/lib/logger";
 
 export type AuditAction =
   | "auth.login"
+  | "auth.logout"
+  | "auth.idle"
   | "doc.lock"
   | "doc.release-lock"
   | "doc.cancel-inspect"
@@ -54,6 +56,8 @@ export type AuditAction =
 
 export const AUDIT_ACTION_LABEL: Record<AuditAction, string> = {
   "auth.login": "登入系統",
+  "auth.logout": "登出系統",
+  "auth.idle": "閒置逾時登出",
   "doc.lock": "鎖定單據（取得驗收/揀貨）",
   "doc.release-lock": "交棒釋放鎖定",
   "doc.cancel-inspect": "取消驗收身份",

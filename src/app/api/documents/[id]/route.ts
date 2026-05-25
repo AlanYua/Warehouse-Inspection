@@ -15,6 +15,7 @@ import { assertCanEditDoc } from "@/lib/documents/lock";
 import { inspectionDocDetailInclude } from "@/lib/documents/doc-detail-include";
 import { syncLineStorageFromProducts } from "@/lib/documents/syncLineStorageFromProducts";
 import { writeAudit } from "@/lib/audit";
+import { requireConfirmPassword } from "@/lib/reauth";
 import { z } from "zod";
 
 async function syncDocCounterpartyFromChannel(doc: {
@@ -275,7 +276,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
   const u = await getSessionUser();
@@ -284,6 +285,12 @@ export async function DELETE(
   }
   const fg = forbidIfNoPermission(u.role, "documents.delete");
   if (fg) return fg;
+
+  const body = (await req.json().catch(() => ({}))) as {
+    confirmPassword?: string;
+  };
+  const reauth = await requireConfirmPassword(u.id, body.confirmPassword);
+  if (reauth) return reauth;
 
   const { id } = await ctx.params;
   const target = await prisma.inspectionDoc.findUnique({

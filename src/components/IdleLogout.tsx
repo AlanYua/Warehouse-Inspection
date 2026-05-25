@@ -15,7 +15,6 @@ const ACTIVITY_EVENTS = [
   "keydown",
   "scroll",
   "touchstart",
-  "mousemove",
 ] as const;
 
 export function IdleLogout() {
@@ -29,7 +28,19 @@ export function IdleLogout() {
   }, []);
 
   const signOutIdle = useCallback(() => {
-    void signOut({ callbackUrl: "/login?reason=idle" });
+    void (async () => {
+      try {
+        await fetch("/api/auth/session-event", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "idle" }),
+        });
+      } catch {
+        /* 仍執行登出 */
+      }
+      await signOut({ callbackUrl: "/login?reason=idle" });
+    })();
   }, []);
 
   useEffect(() => {

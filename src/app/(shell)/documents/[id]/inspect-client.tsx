@@ -406,9 +406,19 @@ export default function DocumentInspect({ id }: { id: string }) {
     ) {
       return;
     }
+    const { requestConfirmPassword } = await import(
+      "@/lib/confirm-password-client"
+    );
+    const confirmPassword = await requestConfirmPassword({
+      title: "確認刪除單據",
+      description: `刪除「${doc?.documentNumber ?? id}」`,
+    });
+    if (!confirmPassword) return;
     const res = await fetch(`/api/documents/${id}`, {
       method: "DELETE",
       credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmPassword }),
     });
     if (!res.ok) {
       setErr(await res.text());

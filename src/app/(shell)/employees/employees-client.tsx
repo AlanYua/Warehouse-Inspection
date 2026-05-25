@@ -122,12 +122,28 @@ export default function EmployeesClient({
     isActive?: boolean;
   }) {
     setErr(null);
+    const needsReauth =
+      patch.role !== undefined ||
+      patch.isActive !== undefined ||
+      patch.password !== undefined;
+    let confirmPassword: string | undefined;
+    if (needsReauth) {
+      const { requestConfirmPassword } = await import(
+        "@/lib/confirm-password-client"
+      );
+      const pw = await requestConfirmPassword({
+        title: "確認變更權限或帳號狀態",
+        description: "變更角色、啟用狀態或重設密碼前需再次驗證",
+      });
+      if (!pw) return;
+      confirmPassword = pw;
+    }
     setBusy(id);
     const res = await fetch(`/api/users/${id}`, {
       method: "PATCH",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
+      body: JSON.stringify({ ...patch, confirmPassword }),
     });
     setBusy(null);
     if (!res.ok) {
@@ -139,10 +155,20 @@ export default function EmployeesClient({
 
   async function deleteRow(id: string) {
     setErr(null);
+    const { requestConfirmPassword } = await import(
+      "@/lib/confirm-password-client"
+    );
+    const confirmPassword = await requestConfirmPassword({
+      title: "確認刪除員工",
+      description: "此動作無法復原",
+    });
+    if (!confirmPassword) return;
     setBusy(id);
     const res = await fetch(`/api/users/${id}`, {
       method: "DELETE",
       credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmPassword }),
     });
     setBusy(null);
     if (!res.ok) {

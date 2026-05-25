@@ -139,9 +139,19 @@ export default function DocumentsList({
     ) {
       return;
     }
+    const { requestConfirmPassword } = await import(
+      "@/lib/confirm-password-client"
+    );
+    const confirmPassword = await requestConfirmPassword({
+      title: "確認刪除單據",
+      description: `刪除「${row.documentNumber}」`,
+    });
+    if (!confirmPassword) return;
     const res = await fetch(`/api/documents/${row.id}`, {
       method: "DELETE",
       credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmPassword }),
     });
     if (!res.ok) {
       alert(await res.text());
@@ -201,13 +211,21 @@ export default function DocumentsList({
     ) {
       return;
     }
+    const { requestConfirmPassword } = await import(
+      "@/lib/confirm-password-client"
+    );
+    const confirmPassword = await requestConfirmPassword({
+      title: "確認批次刪除",
+      description: `將刪除 ${selectedIds.length} 筆單據`,
+    });
+    if (!confirmPassword) return;
     setBatchDeleting(true);
     try {
       const res = await fetch("/api/documents/batch-delete", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentIds: selectedIds }),
+        body: JSON.stringify({ documentIds: selectedIds, confirmPassword }),
       });
       const j = (await res.json().catch(() => ({}))) as
         | { ok: true; count: number; missingIds?: string[] }

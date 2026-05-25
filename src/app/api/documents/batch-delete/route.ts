@@ -7,12 +7,14 @@ import { Role } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { forbidIfNoPermission, getSessionUser } from "@/lib/api-guard";
+import { requireConfirmPassword } from "@/lib/reauth";
 import { writeAudit } from "@/lib/audit";
 import { canDeleteDocument } from "@/lib/documents/delete-guard";
 import { z } from "zod";
 
 const bodySchema = z.object({
   documentIds: z.array(z.string().min(1)).min(1),
+  confirmPassword: z.string().min(1),
 });
 
 export async function POST(req: Request) {
@@ -25,10 +27,17 @@ export async function POST(req: Request) {
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) {
-    return NextResponse.json({ error: "請提供 documentIds" }, { status: 400 });
+    return NextResponse.json(
+      { error: parsed.error.flatten().fieldErrors.confirmPassword?.[0] ?? "請提供 documentIds 與 confirmPassword" },
+      { status: 400 },
+    );
   }
 
-  const documentIds = [...new Set(parsed.data.documentIds.map((x) => x.trim()))].filter(
+  const reauth = await requireConfirmPassword(u.id, parsed.data.confirmPassword);
+  if (reauth) return reauth;
+
+  const { documentIds: rawIds } = parsed.data;
+  const documentIds = [...new Set(rawIds.map((x) => x.trim()))].filter(
     Boolean,
   );
   if (documentIds.length === 0) {

@@ -11,12 +11,14 @@ import {
   getSessionUser,
 } from "@/lib/api-guard";
 import { writeAudit } from "@/lib/audit";
+import { requireConfirmPassword } from "@/lib/reauth";
 import { z } from "zod";
 
 const bodySchema = z.object({
   documentIds: z.array(z.string().min(1)).min(1),
   logisticsNo: z.string().trim().min(1),
   packageSize: z.string().trim().min(1).optional(),
+  confirmPassword: z.string().min(1),
 });
 
 async function resolveDefaultWarehousePickerId(sessionUserId: string, sessionRole: Role) {
@@ -42,10 +44,16 @@ export async function POST(req: Request) {
   const parsed = bodySchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "請提供 documentIds、物流單號" },
+      { error: "請提供 documentIds、物流單號與 confirmPassword" },
       { status: 400 },
     );
   }
+
+  const reauth = await requireConfirmPassword(
+    u.id,
+    parsed.data.confirmPassword,
+  );
+  if (reauth) return reauth;
 
   const documentIds = [...new Set(parsed.data.documentIds)];
   const logisticsNo = parsed.data.logisticsNo.trim();

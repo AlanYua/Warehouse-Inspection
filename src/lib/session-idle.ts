@@ -7,10 +7,18 @@ export const SESSION_IDLE_MS = 2 * 60 * 60 * 1000;
 
 export const SESSION_IDLE_LABEL = "2 小時";
 
+/** 舊 JWT 無 lastActivity 時視為 0，強制重新登入。 */
+export function effectiveLastActivityMs(lastActivity: unknown): number {
+  return typeof lastActivity === "number" && Number.isFinite(lastActivity)
+    ? lastActivity
+    : 0;
+}
+
 export function isSessionIdleExpired(
-  lastActivityMs: number,
+  lastActivity: unknown,
   now = Date.now(),
 ): boolean {
+  const lastActivityMs = effectiveLastActivityMs(lastActivity);
   return now - lastActivityMs > SESSION_IDLE_MS;
 }
 

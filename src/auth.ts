@@ -78,11 +78,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return token;
       }
 
-      const lastActivity = token.lastActivity as number | undefined;
-      if (
-        typeof lastActivity === "number" &&
-        isSessionIdleExpired(lastActivity)
-      ) {
+      if (isSessionIdleExpired(token.lastActivity)) {
         return { ...token, expired: true };
       }
 
