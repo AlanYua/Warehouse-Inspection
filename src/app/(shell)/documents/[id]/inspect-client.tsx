@@ -13,7 +13,7 @@ import {
   Role,
 } from "@prisma/client";
 import { useSession } from "next-auth/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   LOGISTICS_SELF_PICKUP,
   LOGISTICS_WAREHOUSE_DELIVERY,
@@ -43,7 +43,6 @@ export default function DocumentInspect({ id }: { id: string }) {
   const [selfPickup, setSelfPickup] = useState(false);
   const [warehouseDelivery, setWarehouseDelivery] = useState(false);
   const [shipping, setShipping] = useState(false);
-  const autoShipLnRef = useRef("");
   const [packageCountA, setPackageCountA] = useState("");
   const [packageCountC, setPackageCountC] = useState("");
   const [packageSize, setPackageSize] = useState("");
@@ -96,7 +95,6 @@ export default function DocumentInspect({ id }: { id: string }) {
         setWarehouseDelivery(false);
         setLogisticsNo((cur) => cur || ln);
       }
-      autoShipLnRef.current = "";
     })();
   }, [
     doc,
@@ -104,22 +102,6 @@ export default function DocumentInspect({ id }: { id: string }) {
   ]);
 
   const noLogisticsInput = selfPickup || warehouseDelivery;
-
-  useEffect(() => {
-    if (!doc || doc.status !== DocumentStatus.COMPLETED || !canShip) return;
-    if (doc.flow !== "OUT") return;
-    if (noLogisticsInput) return;
-    const ln = logisticsNo.trim().replace(/\s+/g, "");
-    if (!ln || ln === autoShipLnRef.current) return;
-    autoShipLnRef.current = ln;
-    const t = setTimeout(() => void ship(), 600);
-    return () => clearTimeout(t);
-  }, [
-    logisticsNo,
-    noLogisticsInput,
-    doc,
-    canShip,
-  ]);
 
   async function ensureLock(inspectAs: "PICKER" | "INSPECTOR") {
     const res = await fetch(`/api/documents/${id}/lock`, {
@@ -671,7 +653,7 @@ export default function DocumentInspect({ id }: { id: string }) {
       )}
       {completed && !shipped && doc.flow === "OUT" && (
         <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-900 dark:text-emerald-200">
-          已完成驗收。填寫物流單號後自動出貨；自取／倉庫親送請勾選後按「出貨」（A/C 選填作紀錄）；需列印請按單據區塊上的「列印」。
+          已完成驗收。填寫物流單號後按「出貨」；自取／倉庫親送請勾選後按「出貨」（A/C 選填作紀錄）；需列印請按單據區塊上的「列印」。
         </p>
       )}
       {completed && !shipped && doc.flow === "IN" && !stocked && (
@@ -940,7 +922,6 @@ export default function DocumentInspect({ id }: { id: string }) {
                       if (checked) {
                         setWarehouseDelivery(false);
                         setLogisticsNo("");
-                        autoShipLnRef.current = "";
                       }
                     }}
                   />
@@ -957,7 +938,6 @@ export default function DocumentInspect({ id }: { id: string }) {
                       if (checked) {
                         setSelfPickup(false);
                         setLogisticsNo("");
-                        autoShipLnRef.current = "";
                       }
                     }}
                   />
@@ -1182,7 +1162,6 @@ export default function DocumentInspect({ id }: { id: string }) {
               setSelfPickup(false);
               setWarehouseDelivery(false);
               setLogisticsNo(decoded);
-              autoShipLnRef.current = "";
               setErr(null);
               return;
             }
