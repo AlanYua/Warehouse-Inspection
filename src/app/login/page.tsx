@@ -139,10 +139,6 @@ function LoginForm() {
             >
               {loading ? "登入中…" : "登入"}
             </button>
-            <p className="text-[11px] text-center text-muted-foreground leading-relaxed">
-              登入後若連續 {SESSION_IDLE_LABEL} 無任何操作，系統將自動登出並清除
-              session，以減少瀏覽器 cookie 占用。
-            </p>
           </form>
         </div>
       </div>
