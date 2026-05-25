@@ -11,6 +11,7 @@ declare module "next-auth" {
       role: Role;
       username: string;
     };
+    lastActivity?: number;
   }
 }
 

@@ -62,7 +62,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   session: {
     strategy: "jwt",
-    maxAge: 60 * 60 * 8,
+    maxAge: 60 * 60 * 2,
   },
   callbacks: {
     async jwt({ token, user, trigger, session }) {
@@ -114,6 +114,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.id as string;
         session.user.role = token.role as Role;
         session.user.username = (token.username as string) ?? "";
+      }
+      if (typeof token.lastActivity === "number" && Number.isFinite(token.lastActivity)) {
+        session.lastActivity = token.lastActivity;
       }
       return session;
     },

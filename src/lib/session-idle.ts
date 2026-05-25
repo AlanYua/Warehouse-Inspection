@@ -1,11 +1,11 @@
 /**
- * Session 閒置逾時：2 小時未操作自動登出並清除 cookie。
+ * Session 閒置逾時：30 分鐘未操作自動登出並清除 cookie。
  */
 import type { NextRequest, NextResponse } from "next/server";
 
-export const SESSION_IDLE_MS = 2 * 60 * 60 * 1000;
+export const SESSION_IDLE_MS = 30 * 60 * 1000;
 
-export const SESSION_IDLE_LABEL = "2 小時";
+export const SESSION_IDLE_LABEL = "30 分鐘";
 
 /** 舊 JWT 無 lastActivity 時視為 0，強制重新登入。 */
 export function effectiveLastActivityMs(lastActivity: unknown): number {
