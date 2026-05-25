@@ -6,7 +6,7 @@ export function SiteCopyright({ className = "" }: { className?: string }) {
     <p
       className={`text-xs text-muted-foreground text-center ${className}`.trim()}
     >
-      Copyright © 2026 Arthur 3C. All rights reserved.
+      Copyright © 2026  All rights reserved.
     </p>
   );
 }
