@@ -57,32 +57,49 @@ function PrintInner() {
   const idsKey = ids.join(",");
   const [data, setData] = useState<PrintPayload | null>(null);
 
-  const applyAutoScaleForA4 = useCallback(() => {
+  const applyPrintLayout = useCallback(() => {
     const pages = Array.from(
       document.querySelectorAll<HTMLElement>(".print-page"),
     );
     if (pages.length === 0) return;
 
-    // 與 @page 保持一致：A4 + 四邊 10mm 邊界
     const mmToPx = 96 / 25.4;
     const printableWidthPx = (210 - 20) * mmToPx;
     const printableHeightPx = (297 - 20) * mmToPx;
 
-    for (const page of pages) {
-      page.style.zoom = "1";
-      page.style.setProperty("--print-scale", "1");
+    const measure = document.createElement("span");
+    measure.setAttribute("aria-hidden", "true");
+    measure.className = "print-name-measure";
+    document.body.appendChild(measure);
 
-      const width = page.scrollWidth;
-      const height = page.scrollHeight;
-      if (!width || !height) continue;
+    try {
+      for (const page of pages) {
+        const nameCol = page.querySelector<HTMLTableColElement>("col.print-col-name");
+        let maxNamePx = 0;
+        for (const cell of page.querySelectorAll<HTMLElement>(
+          "th.print-col-name, td.print-col-name",
+        )) {
+          measure.textContent = cell.textContent?.trim() ?? "";
+          maxNamePx = Math.max(maxNamePx, measure.offsetWidth);
+        }
+        if (nameCol && maxNamePx > 0) {
+          nameCol.style.width = `${Math.ceil(maxNamePx + 16)}px`;
+        }
 
-      const fitScale = Math.min(
-        1,
-        printableWidthPx / width,
-        printableHeightPx / height,
-      );
-      const safeScale = Math.max(0.45, fitScale);
-      page.style.setProperty("--print-scale", safeScale.toFixed(3));
+        page.style.setProperty("--print-scale", "1");
+        const width = page.scrollWidth;
+        const height = page.scrollHeight;
+        if (!width || !height) continue;
+
+        const fitScale = Math.min(
+          1,
+          printableWidthPx / width,
+          printableHeightPx / height,
+        );
+        page.style.setProperty("--print-scale", Math.max(0.28, fitScale).toFixed(3));
+      }
+    } finally {
+      measure.remove();
     }
   }, []);
 
@@ -107,17 +124,18 @@ function PrintInner() {
   useEffect(() => {
     if (!data) return;
 
-    const timer = window.setTimeout(() => {
-      applyAutoScaleForA4();
-    }, 0);
-
-    const onBeforePrint = () => applyAutoScaleForA4();
-    window.addEventListener("beforeprint", onBeforePrint);
+    const run = () => applyPrintLayout();
+    const t0 = window.setTimeout(run, 0);
+    const t1 = window.setTimeout(run, 120);
+    window.addEventListener("beforeprint", run);
+    window.addEventListener("resize", run);
     return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener("beforeprint", onBeforePrint);
+      window.clearTimeout(t0);
+      window.clearTimeout(t1);
+      window.removeEventListener("beforeprint", run);
+      window.removeEventListener("resize", run);
     };
-  }, [data, applyAutoScaleForA4]);
+  }, [data, applyPrintLayout]);
 
   if (ids.length === 0) {
     return (
@@ -147,9 +165,17 @@ function PrintInner() {
         return DEFAULT_COPIES.map((copyLabel) => (
           <div
             key={`${d.id}-${copyLabel}`}
-            className="print-page break-after-page border border-border p-6 bg-card text-card-foreground"
+            className="print-page break-after-page border border-border p-2 bg-card text-card-foreground"
           >
-            <table className="w-full text-sm border border-border print-table">
+            <table className="text-sm border border-border print-table">
+              <colgroup>
+                <col className="print-col-code" />
+                <col className="print-col-barcode" />
+                <col className="print-col-name" />
+                <col className="print-col-qty" />
+                <col className="print-col-qty" />
+                <col className="print-col-remark" />
+              </colgroup>
               <thead className="bg-muted text-muted-foreground">
                 <tr>
                   <th colSpan={6} className="print-doc-header-cell">
@@ -208,23 +234,23 @@ function PrintInner() {
                   </th>
                 </tr>
                 <tr>
-                  <th className="border p-1 text-left">貨號</th>
-                  <th className="border p-1 text-left">條碼</th>
+                  <th className="border p-1 text-left print-col-code">貨號</th>
+                  <th className="border p-1 text-left print-col-barcode">條碼</th>
                   <th className="border p-1 text-left print-col-name">品名</th>
-                  <th className="border p-1 text-right">單據量</th>
-                  <th className="border p-1 text-right">驗收量</th>
-                  <th className="border p-1 text-left">備註</th>
+                  <th className="border p-1 text-right print-col-qty">單據量</th>
+                  <th className="border p-1 text-right print-col-qty">驗收量</th>
+                  <th className="border p-1 text-left print-col-remark">備註</th>
                 </tr>
               </thead>
               <tbody>
                 {d.lines.map((l) => (
                   <tr key={l.id}>
-                    <td className="border p-1">{l.productCode}</td>
-                    <td className="border p-1 font-mono text-xs">{l.barcode}</td>
+                    <td className="border p-1 print-col-code">{l.productCode}</td>
+                    <td className="border p-1 font-mono text-xs print-col-barcode">{l.barcode}</td>
                     <td className="border p-1 print-col-name">{l.productName}</td>
-                    <td className="border p-1 text-right">{l.docQuantity}</td>
-                    <td className="border p-1 text-right">{l.inspectQuantity}</td>
-                    <td className="border p-1 whitespace-pre-wrap">{l.remark ?? "—"}</td>
+                    <td className="border p-1 text-right print-col-qty">{l.docQuantity}</td>
+                    <td className="border p-1 text-right print-col-qty">{l.inspectQuantity}</td>
+                    <td className="border p-1 print-col-remark">{l.remark ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -234,41 +260,75 @@ function PrintInner() {
       })}
 
       <style jsx global>{`
+        .print-name-measure {
+          position: fixed;
+          left: -9999px;
+          top: 0;
+          visibility: hidden;
+          white-space: nowrap;
+          font-size: 12px;
+          line-height: 1.3;
+          font-family: ui-sans-serif, system-ui, sans-serif;
+        }
+
+        .print-page {
+          zoom: var(--print-scale, 1);
+          transform-origin: top left;
+        }
+
         .print-table {
-          table-layout: fixed;
+          table-layout: auto;
+          width: max-content;
+          min-width: 100%;
         }
 
-        .print-col-name {
+        .print-col-code,
+        .print-table .print-col-code {
+          white-space: nowrap;
+          font-size: 10px;
+        }
+
+        .print-col-barcode,
+        .print-table .print-col-barcode {
+          white-space: nowrap;
+          font-size: 10px;
+        }
+
+        .print-col-name,
+        .print-table .print-col-name {
           white-space: nowrap !important;
-          word-break: normal !important;
-          overflow: hidden;
+          word-break: keep-all !important;
         }
 
-        .print-table th:nth-child(1),
-        .print-table td:nth-child(1) {
-          width: 16%;
+        .print-col-qty,
+        .print-table .print-col-qty {
+          width: 1%;
+          white-space: nowrap;
+          text-align: right;
         }
 
-        .print-table th:nth-child(2),
-        .print-table td:nth-child(2) {
-          width: 18%;
+        .print-col-remark,
+        .print-table .print-col-remark {
+          width: 1%;
+          white-space: nowrap;
         }
 
-        .print-table th:nth-child(3),
-        .print-table td:nth-child(3) {
-          width: 46%;
+        .print-company {
+          padding-bottom: 6px !important;
+          margin-bottom: 6px !important;
         }
 
-        .print-table th:nth-child(4),
-        .print-table td:nth-child(4),
-        .print-table th:nth-child(5),
-        .print-table td:nth-child(5) {
-          width: 5%;
+        .print-title {
+          margin-bottom: 4px !important;
         }
 
-        .print-table th:nth-child(6),
-        .print-table td:nth-child(6) {
-          width: 10%;
+        .print-meta {
+          margin-bottom: 4px !important;
+        }
+
+        .print-store {
+          margin-bottom: 4px !important;
+          padding: 6px 8px !important;
         }
 
         @media print {
@@ -308,13 +368,11 @@ function PrintInner() {
           }
 
           .print-page {
-            border: 1px solid #d1d5db !important;
+            border: none !important;
             background: white !important;
             color: #111827 !important;
-            padding: 12px !important;
+            padding: 0 !important;
             margin: 0 !important;
-            zoom: var(--print-scale, 1);
-            transform-origin: top left !important;
             break-inside: auto !important;
             page-break-inside: auto !important;
             position: relative !important;
@@ -337,25 +395,25 @@ function PrintInner() {
           }
 
           .print-title {
-            font-size: 22px !important;
-            margin-bottom: 10px !important;
+            font-size: 18px !important;
+            margin-bottom: 4px !important;
           }
 
           .print-meta {
-            gap: 6px !important;
-            margin-bottom: 10px !important;
+            gap: 2px !important;
+            margin-bottom: 4px !important;
           }
 
           .print-store {
-            margin-bottom: 10px !important;
             border-radius: 0 !important;
             background: white !important;
           }
 
           .print-table {
             border-collapse: collapse !important;
-            width: 100% !important;
-            table-layout: fixed !important;
+            width: max-content !important;
+            min-width: 100% !important;
+            table-layout: auto !important;
           }
 
           .print-table thead {
@@ -373,7 +431,7 @@ function PrintInner() {
             border: none !important;
             background: white !important;
             color: #111827 !important;
-            padding: 0 0 10px 0 !important;
+            padding: 0 0 4px 0 !important;
             text-align: left !important;
             font-weight: 400 !important;
           }
@@ -394,11 +452,10 @@ function PrintInner() {
           .print-table th,
           .print-table td {
             border: 1px solid #9ca3af !important;
-            padding: 4px 6px !important;
-            line-height: 1.4 !important;
-            vertical-align: top !important;
+            padding: 2px 4px !important;
+            line-height: 1.3 !important;
+            vertical-align: middle !important;
           }
-
 
         }
       `}</style>
