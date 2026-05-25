@@ -79,23 +79,31 @@ export default function ChannelsPage() {
   async function loadChannels(opts?: { page?: number }) {
     const k = keyword.trim();
     const dept = depts.find((d) => d.id === deptQueryId);
-    if (!deptQueryId || dept?.name?.includes("預售") || !k) {
+    if (!deptQueryId || dept?.name?.includes("預售")) {
       setRows([]);
       setTotal(0);
-      setLoadedOnce(false);
+      setLoadedOnce(true);
+      setCreateMsg(
+        dept?.name?.includes("預售")
+          ? "預售部門不提供通路查詢"
+          : !depts.length
+            ? "部門載入中，請稍後再查詢"
+            : null,
+      );
       setSel({});
       return;
     }
 
     const p = opts?.page ?? page;
+    setPage(p);
     const offset = (p - 1) * PAGE_SIZE;
     const qs = new URLSearchParams({
       departmentId: deptQueryId,
-      q: k,
       limit: String(PAGE_SIZE),
       offset: String(offset),
       withCount: "1",
     });
+    if (k) qs.set("q", k);
     const res = await fetch(`/api/channels?${qs.toString()}`, {
       credentials: "include",
     });
@@ -108,6 +116,7 @@ export default function ChannelsPage() {
       setSel({});
       return;
     }
+    setCreateMsg(null);
     setRows(Array.isArray(j.rows) ? j.rows : []);
     setTotal(typeof j.total === "number" ? j.total : 0);
     setLoadedOnce(true);
@@ -122,6 +131,15 @@ export default function ChannelsPage() {
     return () => cancelAnimationFrame(id);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- load 刻意不列入；見上
   }, []);
+
+  useEffect(() => {
+    if (!deptQueryId || !depts.length) return;
+    const id = requestAnimationFrame(() => {
+      void loadChannels({ page: 1 });
+    });
+    return () => cancelAnimationFrame(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- loadChannels 刻意不列入
+  }, [deptQueryId, depts]);
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -282,10 +300,8 @@ export default function ChannelsPage() {
             className="ui-select"
             value={deptQueryId}
             onChange={(e) => {
+              setCreateMsg(null);
               setDeptQueryId(e.target.value);
-              setRows([]);
-              setTotal(0);
-              setLoadedOnce(false);
               setSel({});
               setPage(1);
             }}
@@ -328,13 +344,10 @@ export default function ChannelsPage() {
             type="button"
             className="btn-secondary"
             onClick={() => {
-              setCreateMsg(null);
               setKeyword("");
-              setRows([]);
-              setTotal(0);
-              setLoadedOnce(false);
               setSel({});
               setPage(1);
+              void loadChannels({ page: 1 });
             }}
           >
             清除
@@ -352,7 +365,7 @@ export default function ChannelsPage() {
       </FilterBar>
       <p className="text-xs text-muted-foreground -mt-4">
         {!loadedOnce ? (
-          <>未查詢：請選部門、輸入關鍵字後按「查詢」（避免一次載入整個部門）。</>
+          <>載入中…</>
         ) : (
           <>
             查到 <strong className="text-foreground">{total}</strong> 筆，目前顯示第{" "}
@@ -502,6 +515,16 @@ export default function ChannelsPage() {
             </tr>
           </thead>
           <tbody>
+            {rows.length === 0 && loadedOnce && (
+              <tr>
+                <td
+                  colSpan={canDeleteChannels ? 7 : 6}
+                  className="p-6 text-center text-muted-foreground"
+                >
+                  無資料
+                </td>
+              </tr>
+            )}
             {rows.map((r) => (
               <tr key={r.id} className="border-t border-border">
                 <td className="p-2">

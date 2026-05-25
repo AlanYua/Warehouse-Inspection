@@ -61,25 +61,24 @@ export async function GET(req: Request) {
       : NextResponse.json([]);
   }
 
-  // 未帶關鍵字就不查，避免一次拉整個部門
-  if (!q) {
-    return withCount
-      ? NextResponse.json({ rows: [], total: 0, limit: take, offset: skip })
-      : NextResponse.json([]);
-  }
-
-  const where = {
+  const baseWhere = {
     isActive: true,
     departmentId,
-    OR: [
-      { channelCode: { contains: q, mode: "insensitive" as const } },
-      { name: { contains: q, mode: "insensitive" as const } },
-      { phone: { contains: q, mode: "insensitive" as const } },
-      { address: { contains: q, mode: "insensitive" as const } },
-      { lingyueCode: { contains: q, mode: "insensitive" as const } },
-      { department: { name: { contains: q, mode: "insensitive" as const } } },
-    ],
   } satisfies Prisma.ChannelWhereInput;
+
+  const where = q
+    ? ({
+        ...baseWhere,
+        OR: [
+          { channelCode: { contains: q, mode: "insensitive" as const } },
+          { name: { contains: q, mode: "insensitive" as const } },
+          { phone: { contains: q, mode: "insensitive" as const } },
+          { address: { contains: q, mode: "insensitive" as const } },
+          { lingyueCode: { contains: q, mode: "insensitive" as const } },
+          { department: { name: { contains: q, mode: "insensitive" as const } } },
+        ],
+      } satisfies Prisma.ChannelWhereInput)
+    : baseWhere;
 
   const rows = await prisma.channel.findMany({
     where,
