@@ -22,6 +22,8 @@ export async function GET() {
     can(u.role, "products.view") ||
     can(u.role, "dashboard.view") ||
     can(u.role, "reports.shipping-history.view") ||
+    can(u.role, "returns.view") ||
+    can(u.role, "returns.manage") ||
     can(u.role, "settings.print");
   if (!ok) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 

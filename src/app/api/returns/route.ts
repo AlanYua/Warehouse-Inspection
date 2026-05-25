@@ -23,7 +23,7 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
-  const deptId = searchParams.get("departmentId");
+  const deptId = searchParams.get("departmentId")?.trim() || "";
   // 新參數：以收貨時間查詢
   const receivedFrom = searchParams.get("receivedFrom");
   const receivedTo = searchParams.get("receivedTo");

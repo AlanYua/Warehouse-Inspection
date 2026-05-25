@@ -7,31 +7,45 @@
 
 import { BarcodeCamera } from "@/components/BarcodeCamera";
 import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Dept = { id: string; name: string };
+
+type ReturnRow = {
+  id: string;
+  logisticsNo: string;
+  packageName: string;
+  pieceCount: number;
+  recipientName: string;
+  department: Dept;
+  receivedAt?: string | null;
+  createdAt: string;
+};
+
+type QueryState = {
+  departmentId: string;
+  receivedFrom: string;
+  receivedTo: string;
+};
 
 function toDateValue(d: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+function buildReturnsUrl(q: QueryState) {
+  const params = new URLSearchParams();
+  if (q.departmentId) params.set("departmentId", q.departmentId);
+  if (q.receivedFrom) params.set("receivedFrom", q.receivedFrom);
+  if (q.receivedTo) params.set("receivedTo", q.receivedTo);
+  return `/api/returns?${params.toString()}`;
+}
+
 export default function ReturnsPage() {
   const { data: session } = useSession();
   const selfName = session?.user?.name?.trim() ?? "";
   const [depts, setDepts] = useState<Dept[]>([]);
-  const [rows, setRows] = useState<
-    Array<{
-      id: string;
-      logisticsNo: string;
-      packageName: string;
-      pieceCount: number;
-      recipientName: string;
-      department: Dept;
-      receivedAt?: string | null;
-      createdAt: string;
-    }>
-  >([]);
+  const [rows, setRows] = useState<ReturnRow[]>([]);
   const [form, setForm] = useState({
     logisticsNo: "",
     packageName: "",
@@ -39,52 +53,71 @@ export default function ReturnsPage() {
     departmentId: "",
     recipientName: "",
   });
-  const [query, setQuery] = useState(() => {
-    const now = new Date();
-    const today = new Date(now);
+  const [query, setQuery] = useState<QueryState>(() => {
+    const today = new Date();
     return {
       departmentId: "",
       receivedFrom: toDateValue(today),
       receivedTo: toDateValue(today),
     };
   });
+  const queryRef = useRef(query);
+  queryRef.current = query;
+  const fetchGen = useRef(0);
+
   const [postErr, setPostErr] = useState<string | null>(null);
+  const [queryErr, setQueryErr] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [camOpen, setCamOpen] = useState(false);
 
-  async function load(opts?: {
-    departmentId?: string;
-    receivedFrom?: string;
-    receivedTo?: string;
-  }) {
-    const d = await fetch("/api/departments", { credentials: "include" }).then(
-      (x) => x.json(),
-    );
-    setDepts(d);
-    const params = new URLSearchParams();
-    if (opts?.departmentId) params.set("departmentId", opts.departmentId);
-    if (opts?.receivedFrom) params.set("receivedFrom", opts.receivedFrom);
-    if (opts?.receivedTo) params.set("receivedTo", opts.receivedTo);
-    const url = params.toString() ? `/api/returns?${params.toString()}` : "/api/returns";
-    const r = await fetch(url, { credentials: "include" });
-    if (r.ok) setRows(await r.json());
-    else setRows([]);
-    if (d[0] && !form.departmentId) {
-      setForm((f) => ({ ...f, departmentId: d[0].id }));
+  const fetchReturns = useCallback(async (q: QueryState) => {
+    const gen = ++fetchGen.current;
+    setQueryErr(null);
+    const r = await fetch(buildReturnsUrl(q), { credentials: "include" });
+    if (gen !== fetchGen.current) return;
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      setQueryErr(
+        typeof j.error === "string" ? j.error : `查詢失敗（${r.status}）`,
+      );
+      setRows([]);
+      return;
     }
-    if (d[0] && !query.departmentId) {
-      setQuery((q) => ({ ...q, departmentId: d[0].id }));
-    }
-  }
-
-  // 僅初次掛載載入；load 依當下 form 決定預設部門
-  useEffect(() => {
-    const id = requestAnimationFrame(() => {
-      void load();
-    });
-    return () => cancelAnimationFrame(id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- load 刻意不列入；見上
+    setRows(await r.json());
   }, []);
+
+  const search = useCallback(
+    (q?: QueryState) => void fetchReturns(q ?? queryRef.current),
+    [fetchReturns],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const res = await fetch("/api/departments", { credentials: "include" });
+      const raw = res.ok ? await res.json() : [];
+      const deptList: Dept[] = Array.isArray(raw) ? raw : [];
+      if (cancelled) return;
+      setDepts(deptList);
+      const defaultDeptId = deptList[0]?.id ?? "";
+      setForm((f) => ({
+        ...f,
+        departmentId: f.departmentId || defaultDeptId,
+      }));
+      setQuery((q) => {
+        const next: QueryState = {
+          ...q,
+          departmentId: q.departmentId || defaultDeptId,
+        };
+        queryRef.current = next;
+        void fetchReturns(next);
+        return next;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchReturns]);
 
   useEffect(() => {
     if (!selfName) return;
@@ -128,7 +161,7 @@ export default function ReturnsPage() {
       pieceCount: 1,
       recipientName: selfName || f.recipientName,
     }));
-    void load(query);
+    void search();
   }
 
   return (
@@ -221,7 +254,13 @@ export default function ReturnsPage() {
         <select
           className="rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           value={query.departmentId}
-          onChange={(e) => setQuery((q) => ({ ...q, departmentId: e.target.value }))}
+          onChange={(e) =>
+            setQuery((q) => {
+              const next = { ...q, departmentId: e.target.value };
+              queryRef.current = next;
+              return next;
+            })
+          }
         >
           {depts.map((d) => (
             <option key={d.id} value={d.id}>
@@ -233,13 +272,25 @@ export default function ReturnsPage() {
           type="date"
           className="rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           value={query.receivedFrom}
-          onChange={(e) => setQuery((q) => ({ ...q, receivedFrom: e.target.value }))}
+          onChange={(e) =>
+            setQuery((q) => {
+              const next = { ...q, receivedFrom: e.target.value };
+              queryRef.current = next;
+              return next;
+            })
+          }
         />
         <input
           type="date"
           className="rounded-md border border-input bg-background px-2 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           value={query.receivedTo}
-          onChange={(e) => setQuery((q) => ({ ...q, receivedTo: e.target.value }))}
+          onChange={(e) =>
+            setQuery((q) => {
+              const next = { ...q, receivedTo: e.target.value };
+              queryRef.current = next;
+              return next;
+            })
+          }
         />
         <div className="flex gap-2">
           <button
@@ -247,11 +298,15 @@ export default function ReturnsPage() {
             className="flex-1 rounded-md border border-input bg-secondary/50 hover:bg-secondary py-1 font-medium shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => {
               const now = new Date();
-              setQuery((q) => ({
-                ...q,
-                receivedFrom: toDateValue(now),
-                receivedTo: toDateValue(now),
-              }));
+              setQuery((q) => {
+                const next = {
+                  ...q,
+                  receivedFrom: toDateValue(now),
+                  receivedTo: toDateValue(now),
+                };
+                queryRef.current = next;
+                return next;
+              });
             }}
           >
             今天
@@ -259,12 +314,16 @@ export default function ReturnsPage() {
           <button
             type="button"
             className="flex-1 rounded-md bg-primary text-primary-foreground py-1 font-medium shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            onClick={() => void load(query)}
+            onClick={() => void search()}
           >
             查詢
           </button>
         </div>
       </div>
+
+      {queryErr && (
+        <p className="text-sm text-destructive">{queryErr}</p>
+      )}
 
       {/* Mobile cards */}
       <div className="md:hidden space-y-2">
@@ -284,7 +343,7 @@ export default function ReturnsPage() {
             </div>
           </div>
         ))}
-        {rows.length === 0 && (
+        {rows.length === 0 && !queryErr && (
           <p className="text-sm text-muted-foreground py-6 text-center">無資料</p>
         )}
       </div>
@@ -316,6 +375,9 @@ export default function ReturnsPage() {
             ))}
           </tbody>
         </table>
+        {rows.length === 0 && !queryErr && (
+          <p className="text-sm text-muted-foreground py-6 text-center">無資料</p>
+        )}
       </div>
 
       {camOpen && (
