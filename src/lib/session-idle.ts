@@ -22,14 +22,23 @@ export function isSessionIdleExpired(
   return now - lastActivityMs > SESSION_IDLE_MS;
 }
 
+/** 反向代理（Coolify / Traefik）後用 x-forwarded-proto 判斷 HTTPS。 */
+export function isSecureRequest(req: NextRequest): boolean {
+  const forwarded = req.headers.get("x-forwarded-proto");
+  if (forwarded) {
+    return forwarded.split(",")[0]?.trim().toLowerCase() === "https";
+  }
+  return req.nextUrl.protocol === "https:";
+}
+
 export function clearAuthSessionCookies(
   res: NextResponse,
   req: NextRequest,
 ): void {
-  const secure = req.nextUrl.protocol === "https:";
+  const secure = isSecureRequest(req);
   const names = secure
     ? ["__Secure-authjs.session-token", "authjs.session-token"]
-    : ["authjs.session-token"];
+    : ["authjs.session-token", "__Secure-authjs.session-token"];
   for (const name of names) {
     res.cookies.set(name, "", { maxAge: 0, path: "/" });
   }
