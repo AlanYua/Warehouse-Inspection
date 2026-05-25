@@ -1,5 +1,8 @@
 # Coolify：請用此檔（勿用 include）— Coolify 會忽略 include 內服務 →「未選擇任何服務」
 # 手動 VPS 仍可用：docker compose -f docker-compose.prod.yml up -d
+#
+# Build 失敗在 Next「Collecting build traces」、exit 255：多半是 RAM 不足或 compose 並行 build。
+# 伺服器先加 2–4GB swap；或改跑：sh scripts/docker-compose-build.sh（先 worker 再 app）
 
 services:
   db:

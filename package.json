@@ -10,6 +10,7 @@
     "dev": "node ./scripts/run-next.mjs dev --webpack",
     "prebuild": "node ./node_modules/prisma/build/index.js generate",
     "build": "node ./scripts/run-next.mjs build --webpack",
+    "build:docker": "node ./scripts/run-next.mjs build",
     "start": "node ./scripts/run-next.mjs start --webpack",
     "lint": "node ./node_modules/eslint/bin/eslint.js .",
     "db:push": "node ./node_modules/prisma/build/index.js db push --skip-generate",

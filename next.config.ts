@@ -13,9 +13,13 @@ const securityHeaders = [
 const isDev = process.env.NODE_ENV !== "production";
 
 const nextConfig: NextConfig = {
+  // production 預設 Turbopack；dev 的 webpack watchOptions 僅在 --webpack 時生效
+  turbopack: {},
   output: isDev ? undefined : "standalone",
   poweredByHeader: false,
   outputFileTracingRoot: import.meta.dirname,
+  // 縮小 standalone trace 圖，降低 build 峰值記憶體（Coolify 常死在 Collecting build traces）
+  serverExternalPackages: ["@prisma/client", "prisma", "exceljs", "bcryptjs"],
   async headers() {
     return [
       {

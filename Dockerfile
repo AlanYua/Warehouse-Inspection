@@ -13,9 +13,13 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NODE_ENV=production
+# Coolify 小機 build：降峰值 RAM、關 telemetry；prebuild 已跑 prisma generate
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 # public/ 可能未進 git；確保目錄存在，避免 runner COPY /app/public 失敗
 RUN mkdir -p public
-RUN npx prisma generate && npm run build \
+# Linux 容器不必 --webpack（省時間，避免 Coolify build 逾時/OOM 在 trace 階段）
+RUN npm run build:docker \
  && test -f prisma/migrations/20260511155840_init/migration.sql
 
 # ------- runner -------
