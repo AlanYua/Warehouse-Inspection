@@ -2,6 +2,7 @@
  * 已登入後共用外殼：頂部 AppNav ＋ 主內容區（max-width）。
  */
 import { AppNav } from "@/components/AppNav";
+import { SiteCopyright } from "@/components/SiteCopyright";
 
 export default function ShellLayout({
   children,
@@ -14,6 +15,9 @@ export default function ShellLayout({
       <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
         {children}
       </main>
+      <footer className="shrink-0 border-t border-border/60 bg-background/80 px-4 py-3">
+        <SiteCopyright />
+      </footer>
     </div>
   );
 }

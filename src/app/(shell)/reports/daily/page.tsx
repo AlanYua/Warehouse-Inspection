@@ -1,10 +1,11 @@
 /**
- * 日報表：當天出貨已出貨 / 進貨/退貨已入庫
+ * 日報表：出貨已出貨 / 進貨·退貨已入庫
  */
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { todayYmdLocal } from "@/lib/reports/daily-date-range";
 
 type ShippedRow = {
   id: string;
@@ -23,7 +24,8 @@ type ShippedDept = {
 };
 
 type ShippedPayload = {
-  date: string;
+  dateFrom: string;
+  dateTo: string;
   totalDocs: number;
   byDepartment: ShippedDept[];
 };
@@ -44,61 +46,73 @@ type StockedDept = {
 };
 
 type StockedPayload = {
-  date: string;
+  dateFrom: string;
+  dateTo: string;
   totalDocs: number;
   byDepartment: StockedDept[];
 };
 
-function todayYmdLocal() {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+type Department = { id: string; name: string };
+
+function buildQueryParams(dateFrom: string, dateTo: string, departmentId: string) {
+  const sp = new URLSearchParams();
+  if (dateFrom) sp.set("dateFrom", dateFrom);
+  if (dateTo) sp.set("dateTo", dateTo);
+  if (departmentId) sp.set("departmentId", departmentId);
+  return sp.toString();
 }
 
 export default function DailyReportPage() {
-  const [date, setDate] = useState(todayYmdLocal());
+  const today = todayYmdLocal();
+  const [dateFrom, setDateFrom] = useState(today);
+  const [dateTo, setDateTo] = useState(today);
+  const [departmentId, setDepartmentId] = useState("");
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [shipped, setShipped] = useState<ShippedPayload | null>(null);
   const [stocked, setStocked] = useState<StockedPayload | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    void (async () => {
-      setLoading(true);
-      setErr(null);
-      try {
-        const [sRes, iRes] = await Promise.all([
-          fetch(`/api/reports/daily-shipped?date=${encodeURIComponent(date)}`, {
-            credentials: "include",
-          }),
-          fetch(`/api/reports/daily-stocked?date=${encodeURIComponent(date)}`, {
-            credentials: "include",
-          }),
-        ]);
-        if (!sRes.ok || !iRes.ok) {
-          const sText = sRes.ok ? "" : await sRes.text();
-          const iText = iRes.ok ? "" : await iRes.text();
-          setErr(
-            [
-              !sRes.ok ? `已出貨：${sText || `HTTP ${sRes.status}`}` : null,
-              !iRes.ok ? `已入庫：${iText || `HTTP ${iRes.status}`}` : null,
-            ]
-              .filter(Boolean)
-              .join("\n"),
-          );
-          setShipped(sRes.ok ? ((await sRes.json()) as ShippedPayload) : null);
-          setStocked(iRes.ok ? ((await iRes.json()) as StockedPayload) : null);
-          return;
-        }
-        setShipped((await sRes.json()) as ShippedPayload);
-        setStocked((await iRes.json()) as StockedPayload);
-      } finally {
-        setLoading(false);
+    void fetch("/api/departments", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows) => setDepartments(Array.isArray(rows) ? rows : []));
+  }, []);
+
+  const fetchReports = useCallback(async () => {
+    setLoading(true);
+    setErr(null);
+    const qs = buildQueryParams(dateFrom, dateTo, departmentId);
+    try {
+      const [sRes, iRes] = await Promise.all([
+        fetch(`/api/reports/daily-shipped?${qs}`, { credentials: "include" }),
+        fetch(`/api/reports/daily-stocked?${qs}`, { credentials: "include" }),
+      ]);
+      if (!sRes.ok || !iRes.ok) {
+        const sText = sRes.ok ? "" : await sRes.text();
+        const iText = iRes.ok ? "" : await iRes.text();
+        setErr(
+          [
+            !sRes.ok ? `已出貨：${sText || `HTTP ${sRes.status}`}` : null,
+            !iRes.ok ? `已入庫：${iText || `HTTP ${iRes.status}`}` : null,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        );
+        setShipped(sRes.ok ? ((await sRes.json()) as ShippedPayload) : null);
+        setStocked(iRes.ok ? ((await iRes.json()) as StockedPayload) : null);
+        return;
       }
-    })();
-  }, [date]);
+      setShipped((await sRes.json()) as ShippedPayload);
+      setStocked((await iRes.json()) as StockedPayload);
+    } finally {
+      setLoading(false);
+    }
+  }, [dateFrom, dateTo, departmentId]);
+
+  useEffect(() => {
+    void fetchReports();
+  }, [fetchReports]);
 
   const shippedInspectTotal = useMemo(() => {
     if (!shipped) return 0;
@@ -118,50 +132,80 @@ export default function DailyReportPage() {
     return sum;
   }, [stocked]);
 
+  const rangeLabel =
+    dateFrom === dateTo ? dateFrom : `${dateFrom} ~ ${dateTo}`;
+
+  const excelQs = buildQueryParams(dateFrom, dateTo, departmentId);
+
   return (
     <div className="page">
       <header className="page-header space-y-1">
         <h1 className="page-title">日報表</h1>
         <p className="page-desc hidden sm:block">
-          出貨：當天已出貨單據（類型 / 單據號碼 / 名稱 / 檢驗總數 / 物流 / 件數）
+          出貨：已出貨單據（類型 / 單據號碼 / 名稱 / 檢驗總數 / 物流號碼 / 件數）
         </p>
         <p className="page-desc hidden sm:block">
-          進貨/退貨：當天已入庫單據（類型 / 名稱 / 單據號碼 / 檢驗總數 / 件數）
+          進貨/退貨：已入庫單據（類型 / 單據號碼 / 名稱 / 檢驗總數 / 箱數）
         </p>
       </header>
-        <div className="filter-bar">
-          <div className="field">
-            <label className="field-label">日期</label>
-            <input
-              type="date"
-              className="ui-input"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </div>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => {
-              const url = `/api/reports/daily-shipped/excel?date=${encodeURIComponent(date)}`;
-              window.location.assign(url);
-            }}
-          >
-            <span className="hidden sm:inline">下載 EXCEL（已出貨）</span>
-            <span className="sm:hidden">出貨 Excel</span>
-          </button>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => {
-              const url = `/api/reports/daily-stocked/excel?date=${encodeURIComponent(date)}`;
-              window.location.assign(url);
-            }}
-          >
-            <span className="hidden sm:inline">下載 EXCEL（已入庫）</span>
-            <span className="sm:hidden">入庫 Excel</span>
-          </button>
+      <div className="filter-bar">
+        <div className="field">
+          <label className="field-label">起始日期</label>
+          <input
+            type="date"
+            className="ui-input"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+          />
         </div>
+        <div className="field">
+          <label className="field-label">結束日期</label>
+          <input
+            type="date"
+            className="ui-input"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label className="field-label">部門</label>
+          <select
+            className="ui-input"
+            value={departmentId}
+            onChange={(e) => setDepartmentId(e.target.value)}
+          >
+            <option value="">全部</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button type="button" className="btn-primary" onClick={() => void fetchReports()}>
+          查詢
+        </button>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => {
+            window.location.assign(`/api/reports/daily-shipped/excel?${excelQs}`);
+          }}
+        >
+          <span className="hidden sm:inline">下載 EXCEL（已出貨）</span>
+          <span className="sm:hidden">出貨 Excel</span>
+        </button>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => {
+            window.location.assign(`/api/reports/daily-stocked/excel?${excelQs}`);
+          }}
+        >
+          <span className="hidden sm:inline">下載 EXCEL（已入庫）</span>
+          <span className="sm:hidden">入庫 Excel</span>
+        </button>
+      </div>
 
       {err && (
         <pre className="text-xs bg-muted text-muted-foreground p-2 rounded-md overflow-auto border border-border">
@@ -170,6 +214,7 @@ export default function DailyReportPage() {
       )}
 
       <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+        <span>區間：{rangeLabel}</span>
         <span>出貨已出貨單據數：{shipped?.totalDocs ?? (loading ? "…" : 0)}</span>
         <span>出貨檢驗總數合計：{loading ? "…" : shippedInspectTotal}</span>
         <span>進貨/退貨已入庫單據數：{stocked?.totalDocs ?? (loading ? "…" : 0)}</span>
@@ -198,10 +243,12 @@ export default function DailyReportPage() {
                       筆數：{dept.rows.length}
                     </div>
                   </div>
-                  {/* Mobile cards */}
                   <div className="md:hidden space-y-2">
                     {dept.rows.map((r) => (
-                      <div key={r.id} className="rounded-xl border border-border bg-card p-3 shadow-xs space-y-1">
+                      <div
+                        key={r.id}
+                        className="rounded-xl border border-border bg-card p-3 shadow-xs space-y-1"
+                      >
                         <div className="flex items-start justify-between gap-2">
                           <Link
                             href={`/documents/${r.id}`}
@@ -209,15 +256,31 @@ export default function DailyReportPage() {
                           >
                             {r.documentNumber}
                           </Link>
-                          <span className="text-xs text-muted-foreground shrink-0">{r.documentType}</span>
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            {r.documentType}
+                          </span>
                         </div>
                         {r.counterpartyName && (
-                          <div className="text-sm text-muted-foreground">{r.counterpartyName}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {r.counterpartyName}
+                          </div>
                         )}
                         <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                          <span>檢驗 <strong className="text-foreground tabular-nums">{r.inspectTotal}</strong></span>
-                          <span>件數 <strong className="text-foreground tabular-nums">{r.packageCount ?? "—"}</strong></span>
-                          {r.logisticsNo && <span className="font-mono">{r.logisticsNo}</span>}
+                          <span>
+                            檢驗{" "}
+                            <strong className="text-foreground tabular-nums">
+                              {r.inspectTotal}
+                            </strong>
+                          </span>
+                          <span>
+                            件數{" "}
+                            <strong className="text-foreground tabular-nums">
+                              {r.packageCount ?? "—"}
+                            </strong>
+                          </span>
+                          {r.logisticsNo && (
+                            <span className="font-mono">{r.logisticsNo}</span>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -225,7 +288,6 @@ export default function DailyReportPage() {
                       <p className="text-sm text-muted-foreground py-4 text-center">無資料</p>
                     )}
                   </div>
-                  {/* Desktop table */}
                   <div className="hidden md:block overflow-x-auto rounded-xl border border-border bg-card shadow-xs">
                     <table className="min-w-full text-sm">
                       <thead className="bg-muted text-left text-muted-foreground">
@@ -251,12 +313,8 @@ export default function DailyReportPage() {
                               </Link>
                             </td>
                             <td className="p-2">{r.counterpartyName ?? "—"}</td>
-                            <td className="p-2 text-right tabular-nums">
-                              {r.inspectTotal}
-                            </td>
-                            <td className="p-2 font-mono text-xs">
-                              {r.logisticsNo ?? "—"}
-                            </td>
+                            <td className="p-2 text-right tabular-nums">{r.inspectTotal}</td>
+                            <td className="p-2 font-mono text-xs">{r.logisticsNo ?? "—"}</td>
                             <td className="p-2 text-right tabular-nums">
                               {r.packageCount ?? "—"}
                             </td>
@@ -299,10 +357,12 @@ export default function DailyReportPage() {
                       筆數：{dept.rows.length}
                     </div>
                   </div>
-                  {/* Mobile cards */}
                   <div className="md:hidden space-y-2">
                     {dept.rows.map((r) => (
-                      <div key={r.id} className="rounded-xl border border-border bg-card p-3 shadow-xs space-y-1">
+                      <div
+                        key={r.id}
+                        className="rounded-xl border border-border bg-card p-3 shadow-xs space-y-1"
+                      >
                         <div className="flex items-start justify-between gap-2">
                           <Link
                             href={`/documents/${r.id}`}
@@ -310,14 +370,28 @@ export default function DailyReportPage() {
                           >
                             {r.documentNumber}
                           </Link>
-                          <span className="text-xs text-muted-foreground shrink-0">{r.documentType}</span>
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            {r.documentType}
+                          </span>
                         </div>
                         {r.counterpartyName && (
-                          <div className="text-sm text-muted-foreground">{r.counterpartyName}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {r.counterpartyName}
+                          </div>
                         )}
                         <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                          <span>檢驗 <strong className="text-foreground tabular-nums">{r.inspectTotal}</strong></span>
-                          <span>箱數 <strong className="text-foreground tabular-nums">{r.packageCount ?? "—"}</strong></span>
+                          <span>
+                            檢驗{" "}
+                            <strong className="text-foreground tabular-nums">
+                              {r.inspectTotal}
+                            </strong>
+                          </span>
+                          <span>
+                            箱數{" "}
+                            <strong className="text-foreground tabular-nums">
+                              {r.packageCount ?? "—"}
+                            </strong>
+                          </span>
                         </div>
                       </div>
                     ))}
@@ -325,14 +399,13 @@ export default function DailyReportPage() {
                       <p className="text-sm text-muted-foreground py-4 text-center">無資料</p>
                     )}
                   </div>
-                  {/* Desktop table */}
                   <div className="hidden md:block overflow-x-auto rounded-xl border border-border bg-card shadow-xs">
                     <table className="min-w-full text-sm">
                       <thead className="bg-muted text-left text-muted-foreground">
                         <tr>
                           <th className="p-2">類型</th>
-                          <th className="p-2">名稱</th>
                           <th className="p-2">單據號碼</th>
+                          <th className="p-2">名稱</th>
                           <th className="p-2 text-right whitespace-nowrap">檢驗總數</th>
                           <th className="p-2 text-right whitespace-nowrap">箱數</th>
                         </tr>
@@ -341,7 +414,6 @@ export default function DailyReportPage() {
                         {dept.rows.map((r) => (
                           <tr key={r.id} className="border-t border-border">
                             <td className="p-2">{r.documentType}</td>
-                            <td className="p-2">{r.counterpartyName ?? "—"}</td>
                             <td className="p-2 font-mono">
                               <Link
                                 href={`/documents/${r.id}`}
@@ -350,9 +422,8 @@ export default function DailyReportPage() {
                                 {r.documentNumber}
                               </Link>
                             </td>
-                            <td className="p-2 text-right tabular-nums">
-                              {r.inspectTotal}
-                            </td>
+                            <td className="p-2">{r.counterpartyName ?? "—"}</td>
+                            <td className="p-2 text-right tabular-nums">{r.inspectTotal}</td>
                             <td className="p-2 text-right tabular-nums">
                               {r.packageCount ?? "—"}
                             </td>
@@ -377,4 +448,3 @@ export default function DailyReportPage() {
     </div>
   );
 }
-

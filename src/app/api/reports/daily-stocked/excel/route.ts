@@ -1,34 +1,20 @@
 /**
  * 日報表（已入庫）：下載 Excel
- * URL: /api/reports/daily-stocked/excel?date=YYYY-MM-DD (optional, default today)
+ * URL: /api/reports/daily-stocked/excel?dateFrom=&dateTo=&departmentId=
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/api-guard";
 import { can } from "@/lib/permissions";
 import { buildDailyStockedWorkbook } from "@/lib/export/daily-stocked-excel";
+import {
+  dailyRangeExportSuffix,
+  formatDailyRangeLabel,
+  resolveDailyDateRange,
+} from "@/lib/reports/daily-date-range";
 
-function parseYmd(s: string | null): Date | null {
-  if (!s) return null;
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s.trim());
-  if (!m) return null;
-  const y = Number(m[1]);
-  const mo = Number(m[2]);
-  const d = Number(m[3]);
-  if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return null;
-  return new Date(Date.UTC(y, mo - 1, d, 0, 0, 0, 0));
-}
-
-function toYmdLocal(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function exportName(dateYmd: string) {
-  const safe = dateYmd.replaceAll("-", "");
-  return `daily-stocked-${safe}.xlsx`;
+function exportName(dateFrom: string, dateTo: string) {
+  return `daily-stocked-${dailyRangeExportSuffix(dateFrom, dateTo)}.xlsx`;
 }
 
 export async function GET(req: Request) {
@@ -39,20 +25,19 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url);
-  const dateQ = url.searchParams.get("date");
-  const startUtc =
-    parseYmd(dateQ) ??
-    (() => {
-      const now = new Date();
-      return parseYmd(toYmdLocal(now))!;
-    })();
-  const endUtc = new Date(startUtc.getTime() + 24 * 60 * 60 * 1000 - 1);
-  const dateYmd = toYmdLocal(new Date(startUtc.getTime()));
+  const { startUtc, endUtc, dateFrom, dateTo } = resolveDailyDateRange({
+    dateFrom: url.searchParams.get("dateFrom"),
+    dateTo: url.searchParams.get("dateTo"),
+    date: url.searchParams.get("date"),
+  });
+  const departmentId = url.searchParams.get("departmentId")?.trim() || "";
+  const dateLabel = formatDailyRangeLabel(dateFrom, dateTo);
 
   const docs = await prisma.inspectionDoc.findMany({
     where: {
       flow: "IN",
       status: "COMPLETED",
+      ...(departmentId ? { departmentId } : {}),
       stockedAt: { gte: startUtc, lte: endUtc },
     },
     select: {
@@ -159,7 +144,11 @@ export async function GET(req: Request) {
       return (a.barcode ?? "").localeCompare(b.barcode ?? "", "en");
     });
 
-  const bytes = await buildDailyStockedWorkbook({ dateYmd, docs: docRows, items: itemRows });
+  const bytes = await buildDailyStockedWorkbook({
+    dateLabel,
+    docs: docRows,
+    items: itemRows,
+  });
   const ab = new ArrayBuffer(bytes.byteLength);
   new Uint8Array(ab).set(bytes);
 
@@ -167,8 +156,7 @@ export async function GET(req: Request) {
     status: 200,
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="${exportName(dateYmd)}"`,
+      "Content-Disposition": `attachment; filename="${exportName(dateFrom, dateTo)}"`,
     },
   });
 }
-

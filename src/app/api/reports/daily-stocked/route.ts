@@ -1,29 +1,13 @@
 /**
- * 日報表：當天已入庫（驗入、倉庫主管勾選完成上架）
- * URL: /api/reports/daily-stocked?date=YYYY-MM-DD (optional, default today)
+ * 日報表：已入庫（驗入、倉庫主管勾選完成上架）
+ * URL: /api/reports/daily-stocked?dateFrom=&dateTo=&departmentId=
+ * 相容：?date=YYYY-MM-DD
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/api-guard";
 import { can } from "@/lib/permissions";
-
-function parseYmd(s: string | null): Date | null {
-  if (!s) return null;
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s.trim());
-  if (!m) return null;
-  const y = Number(m[1]);
-  const mo = Number(m[2]);
-  const d = Number(m[3]);
-  if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return null;
-  return new Date(Date.UTC(y, mo - 1, d, 0, 0, 0, 0));
-}
-
-function toYmdLocal(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
+import { resolveDailyDateRange } from "@/lib/reports/daily-date-range";
 
 export async function GET(req: Request) {
   const u = await getSessionUser();
@@ -33,19 +17,18 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url);
-  const dateQ = url.searchParams.get("date");
-  const startUtc =
-    parseYmd(dateQ) ??
-    (() => {
-      const now = new Date();
-      return parseYmd(toYmdLocal(now))!;
-    })();
-  const endUtc = new Date(startUtc.getTime() + 24 * 60 * 60 * 1000 - 1);
+  const { startUtc, endUtc, dateFrom, dateTo } = resolveDailyDateRange({
+    dateFrom: url.searchParams.get("dateFrom"),
+    dateTo: url.searchParams.get("dateTo"),
+    date: url.searchParams.get("date"),
+  });
+  const departmentId = url.searchParams.get("departmentId")?.trim() || "";
 
   const docs = await prisma.inspectionDoc.findMany({
     where: {
       flow: "IN",
       status: "COMPLETED",
+      ...(departmentId ? { departmentId } : {}),
       stockedAt: { gte: startUtc, lte: endUtc },
     },
     select: {
@@ -111,9 +94,9 @@ export async function GET(req: Request) {
   );
 
   return NextResponse.json({
-    date: toYmdLocal(new Date(startUtc.getTime())),
+    dateFrom,
+    dateTo,
     totalDocs: docs.length,
     byDepartment: out,
   });
 }
-

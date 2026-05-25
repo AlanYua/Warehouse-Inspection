@@ -17,6 +17,7 @@ export async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const rows = await prisma.importLog.findMany({
+    where: { source: { not: "DB_SYNC" } },
     orderBy: { createdAt: "desc" },
     take: 50,
   });

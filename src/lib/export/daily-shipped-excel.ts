@@ -31,7 +31,7 @@ function safeText(v: unknown): string {
 }
 
 export async function buildDailyShippedWorkbook(args: {
-  dateYmd: string;
+  dateLabel: string;
   docs: DailyDocRow[];
   items: DailyItemRow[];
 }): Promise<Uint8Array> {
@@ -51,7 +51,7 @@ export async function buildDailyShippedWorkbook(args: {
     { header: "件數", key: "packageCount", width: 10 },
   ];
 
-  sheetDocs.addRow([`日報表（已出貨）`, `日期：${args.dateYmd}`]);
+  sheetDocs.addRow([`日報表（已出貨）`, `日期：${args.dateLabel}`]);
   sheetDocs.mergeCells(1, 1, 1, 7);
   sheetDocs.getRow(1).font = { bold: true, size: 14 };
   sheetDocs.getRow(2).font = { bold: true };
@@ -80,7 +80,7 @@ export async function buildDailyShippedWorkbook(args: {
     { header: "檢驗總數", key: "inspectTotal", width: 12 },
   ];
 
-  sheetItems.addRow([`日報表（已出貨）`, `日期：${args.dateYmd}`]);
+  sheetItems.addRow([`日報表（已出貨）`, `日期：${args.dateLabel}`]);
   sheetItems.mergeCells(1, 1, 1, 5);
   sheetItems.getRow(1).font = { bold: true, size: 14 };
   sheetItems.getRow(2).font = { bold: true };

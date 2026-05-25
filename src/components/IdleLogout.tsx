@@ -1,5 +1,5 @@
 /**
- * 閒置 1 小時自動登出：監聽操作並定期同步 lastActivity 至 JWT。
+ * 閒置 2 小時自動登出：監聽操作並定期同步 lastActivity 至 JWT。
  */
 "use client";
 

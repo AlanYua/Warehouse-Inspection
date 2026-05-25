@@ -1,9 +1,11 @@
 /**
- * Session 閒置逾時：1 小時未操作自動登出。
+ * Session 閒置逾時：2 小時未操作自動登出並清除 cookie。
  */
 import type { NextRequest, NextResponse } from "next/server";
 
-export const SESSION_IDLE_MS = 60 * 60 * 1000;
+export const SESSION_IDLE_MS = 2 * 60 * 60 * 1000;
+
+export const SESSION_IDLE_LABEL = "2 小時";
 
 export function isSessionIdleExpired(
   lastActivityMs: number,

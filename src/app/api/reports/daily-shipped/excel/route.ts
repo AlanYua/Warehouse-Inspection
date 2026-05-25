@@ -1,34 +1,20 @@
 /**
  * 日報表（已出貨）：下載 Excel
- * URL: /api/reports/daily-shipped/excel?date=YYYY-MM-DD (optional, default today)
+ * URL: /api/reports/daily-shipped/excel?dateFrom=&dateTo=&departmentId=
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/api-guard";
 import { can } from "@/lib/permissions";
 import { buildDailyShippedWorkbook } from "@/lib/export/daily-shipped-excel";
+import {
+  dailyRangeExportSuffix,
+  formatDailyRangeLabel,
+  resolveDailyDateRange,
+} from "@/lib/reports/daily-date-range";
 
-function parseYmd(s: string | null): Date | null {
-  if (!s) return null;
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s.trim());
-  if (!m) return null;
-  const y = Number(m[1]);
-  const mo = Number(m[2]);
-  const d = Number(m[3]);
-  if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return null;
-  return new Date(Date.UTC(y, mo - 1, d, 0, 0, 0, 0));
-}
-
-function toYmdLocal(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function exportName(dateYmd: string) {
-  const safe = dateYmd.replaceAll("-", "");
-  return `daily-shipped-${safe}.xlsx`;
+function exportName(dateFrom: string, dateTo: string) {
+  return `daily-shipped-${dailyRangeExportSuffix(dateFrom, dateTo)}.xlsx`;
 }
 
 export async function GET(req: Request) {
@@ -39,20 +25,19 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url);
-  const dateQ = url.searchParams.get("date");
-  const startUtc =
-    parseYmd(dateQ) ??
-    (() => {
-      const now = new Date();
-      return parseYmd(toYmdLocal(now))!;
-    })();
-  const endUtc = new Date(startUtc.getTime() + 24 * 60 * 60 * 1000 - 1);
-  const dateYmd = toYmdLocal(new Date(startUtc.getTime()));
+  const { startUtc, endUtc, dateFrom, dateTo } = resolveDailyDateRange({
+    dateFrom: url.searchParams.get("dateFrom"),
+    dateTo: url.searchParams.get("dateTo"),
+    date: url.searchParams.get("date"),
+  });
+  const departmentId = url.searchParams.get("departmentId")?.trim() || "";
+  const dateLabel = formatDailyRangeLabel(dateFrom, dateTo);
 
   const docs = await prisma.inspectionDoc.findMany({
     where: {
       flow: "OUT",
       status: "SHIPPED",
+      ...(departmentId ? { departmentId } : {}),
       OR: [
         { shippedAt: { gte: startUtc, lte: endUtc } },
         { AND: [{ shippedAt: null }, { updatedAt: { gte: startUtc, lte: endUtc } }] },
@@ -94,7 +79,6 @@ export async function GET(req: Request) {
     inspectTotal: qtyByDocId.get(d.id) ?? 0,
   }));
 
-  // 品項彙總：依部門 + productCode + barcode 聚合 inspectQuantity，再補 brand
   const lines =
     docIds.length === 0
       ? []
@@ -165,7 +149,11 @@ export async function GET(req: Request) {
       return (a.barcode ?? "").localeCompare(b.barcode ?? "", "en");
     });
 
-  const bytes = await buildDailyShippedWorkbook({ dateYmd, docs: docRows, items: itemRows });
+  const bytes = await buildDailyShippedWorkbook({
+    dateLabel,
+    docs: docRows,
+    items: itemRows,
+  });
   const ab = new ArrayBuffer(bytes.byteLength);
   new Uint8Array(ab).set(bytes);
 
@@ -173,8 +161,7 @@ export async function GET(req: Request) {
     status: 200,
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="${exportName(dateYmd)}"`,
+      "Content-Disposition": `attachment; filename="${exportName(dateFrom, dateTo)}"`,
     },
   });
 }
-

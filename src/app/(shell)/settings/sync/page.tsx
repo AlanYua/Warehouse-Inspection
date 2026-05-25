@@ -39,7 +39,7 @@ export default function SyncSettingsPage() {
       <header className="page-header space-y-1">
         <h1 className="page-title">匯入紀錄</h1>
         <p className="page-desc">
-          顯示最近的 Excel 匯入紀錄（以及其他匯入來源的結果），用來追查匯入成功/失敗原因。
+          顯示最近的 Excel 匯入紀錄，用來追查匯入成功/失敗原因（不含背景 DB 同步）。
         </p>
       </header>
       <div>

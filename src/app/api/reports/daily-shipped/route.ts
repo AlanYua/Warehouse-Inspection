@@ -1,29 +1,13 @@
 /**
- * 日報表：當天已出貨單據
- * URL: /api/reports/daily-shipped?date=YYYY-MM-DD (optional, default today)
+ * 日報表：已出貨單據
+ * URL: /api/reports/daily-shipped?dateFrom=&dateTo=&departmentId=
+ * 相容：?date=YYYY-MM-DD
  */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/api-guard";
 import { can } from "@/lib/permissions";
-
-function parseYmd(s: string | null): Date | null {
-  if (!s) return null;
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s.trim());
-  if (!m) return null;
-  const y = Number(m[1]);
-  const mo = Number(m[2]);
-  const d = Number(m[3]);
-  if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return null;
-  return new Date(Date.UTC(y, mo - 1, d, 0, 0, 0, 0));
-}
-
-function toYmdLocal(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
+import { resolveDailyDateRange } from "@/lib/reports/daily-date-range";
 
 export async function GET(req: Request) {
   const u = await getSessionUser();
@@ -33,21 +17,18 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url);
-  const dateQ = url.searchParams.get("date");
-  const startUtc =
-    parseYmd(dateQ) ??
-    // default today (server local date)
-    (() => {
-      const now = new Date();
-      return parseYmd(toYmdLocal(now))!;
-    })();
-  const endUtc = new Date(startUtc.getTime() + 24 * 60 * 60 * 1000 - 1);
+  const { startUtc, endUtc, dateFrom, dateTo } = resolveDailyDateRange({
+    dateFrom: url.searchParams.get("dateFrom"),
+    dateTo: url.searchParams.get("dateTo"),
+    date: url.searchParams.get("date"),
+  });
+  const departmentId = url.searchParams.get("departmentId")?.trim() || "";
 
-  // shippedAt 優先；舊資料若 shippedAt 為 null，fallback 用 updatedAt（狀態已出貨時）
   const docs = await prisma.inspectionDoc.findMany({
     where: {
       flow: "OUT",
       status: "SHIPPED",
+      ...(departmentId ? { departmentId } : {}),
       OR: [
         { shippedAt: { gte: startUtc, lte: endUtc } },
         { AND: [{ shippedAt: null }, { updatedAt: { gte: startUtc, lte: endUtc } }] },
@@ -119,9 +100,9 @@ export async function GET(req: Request) {
   );
 
   return NextResponse.json({
-    date: toYmdLocal(new Date(startUtc.getTime())),
+    dateFrom,
+    dateTo,
     totalDocs: docs.length,
     byDepartment: out,
   });
 }
-
