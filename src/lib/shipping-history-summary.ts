@@ -9,10 +9,9 @@ export type ShippingHistorySummary = {
   shippedQty: number;
   customerReturnQty: number;
   supplierReturnQty: number;
-  netStock: number;
 };
 
-/** 依驗收量彙總；淨庫存 = 進貨 − 出貨 + 客戶退貨 − 退供應商 */
+/** 依驗收量彙總 */
 export function summarizeShippingHistory(
   lines: {
     inspectQuantity: number;
@@ -40,14 +39,10 @@ export function summarizeShippingHistory(
     }
   }
 
-  const netStock =
-    purchaseQty - shippedQty + customerReturnQty - supplierReturnQty;
-
   return {
     purchaseQty,
     shippedQty,
     customerReturnQty,
     supplierReturnQty,
-    netStock,
   };
 }

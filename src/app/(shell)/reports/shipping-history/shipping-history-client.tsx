@@ -28,7 +28,6 @@ type Payload = {
     shippedQty: number;
     customerReturnQty: number;
     supplierReturnQty: number;
-    netStock: number;
   };
   total: number;
   rows: HistoryRow[];
@@ -405,12 +404,6 @@ export default function ShippingHistoryClient() {
             退供應商量{" "}
             <strong className="tabular-nums text-foreground">
               {fmtAbs(data.summary.supplierReturnQty)}
-            </strong>
-          </span>
-          <span>
-            淨庫存{" "}
-            <strong className={`tabular-nums ${qtyClass(data.summary.netStock)}`}>
-              {fmtSignedQty(data.summary.netStock)}
             </strong>
           </span>
           <span>總筆數 {data.total}</span>

@@ -134,7 +134,6 @@ export async function GET(req: Request) {
         shippedQty: 0,
         customerReturnQty: 0,
         supplierReturnQty: 0,
-        netStock: 0,
       },
       rows: [],
       total: 0,
